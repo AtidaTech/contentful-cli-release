@@ -1,0 +1,46 @@
+{
+  "name": "contentful-cli-release",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Contentful CLI Release tool",
+  "homepage": "https://github.com/AtidaTech/contentful-cli-release",
+  "keywords": [
+    "contentful",
+    "management",
+    "release",
+    "branch",
+    "cli"
+  ],
+  "engines": {
+    "node": ">=14.18.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AtidaTech/contentful-cli-sync.git"
+  },
+  "author": "Atida <hello@atida.com>",
+  "license": "MIT",
+  "scripts": {
+    "lint": "node_modules/eslint/bin/eslint.js --resolve-plugins-relative-to ./ --ext js,mjs,cjs,jsx,ts,tsx ./contentful-cli-release.js",
+    "lint-fix": "node_modules/eslint/bin/eslint.js --resolve-plugins-relative-to ./ --ext js,mjs,cjs,jsx,ts,tsx ./contentful-cli-release.js --fix"
+  },
+  "dependencies": {
+    "contentful-management": ">7.50.0",
+    "contentful-lib-helpers": ">=0.2.0"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^5.62.0",
+    "@typescript-eslint/parser": "^5.0.0",
+    "dotenv": "^16.0.3",
+    "eslint": "^8.35.0",
+    "eslint-config-prettier": "^8.7.0",
+    "eslint-plugin-import": "^2.27.5",
+    "eslint-plugin-jsx-a11y": "^6.7.1",
+    "eslint-plugin-prettier": "^5.0.0",
+    "eslint-plugin-react": "^7.32.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "prettier": "^3.0.0",
+    "typescript": "^4.4.3",
+    "word-wrap": "^1.2.5"
+  }
+}
