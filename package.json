@@ -9,10 +9,14 @@
     "management",
     "release",
     "branch",
-    "cli"
+    "cli",
+    "git"
   ],
   "engines": {
-    "node": ">=14.18.0"
+    "node": ">=16"
+  },
+  "bin": {
+    "contentful-cli-release": "./contentful-cli-release.js"
   },
   "repository": {
     "type": "git",
@@ -25,8 +29,9 @@
     "lint-fix": "node_modules/eslint/bin/eslint.js --resolve-plugins-relative-to ./ --ext js,mjs,cjs,jsx,ts,tsx ./contentful-cli-release.js --fix"
   },
   "dependencies": {
+    "contentful-lib-helpers": ">=0.2.0",
     "contentful-management": ">7.50.0",
-    "contentful-lib-helpers": ">=0.2.0"
+    "minimist": "^1.2.8"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^5.62.0",
@@ -39,7 +44,7 @@
     "eslint-plugin-prettier": "^5.0.0",
     "eslint-plugin-react": "^7.32.2",
     "eslint-plugin-react-hooks": "^4.6.0",
-    "prettier": "^3.0.0",
+    "prettier": "^3.0.1",
     "typescript": "^4.4.3",
     "word-wrap": "^1.2.5"
   }
