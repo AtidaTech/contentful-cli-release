@@ -8,15 +8,21 @@
     "contentful",
     "management",
     "release",
+    "cli-release",
+    "contentful-release",
     "branch",
+    "branching",
     "cli",
-    "git"
+    "git",
+    "github",
+    "gitlab",
+    "ci/cd"
   ],
-  "engines": {
-    "node": ">=16"
-  },
   "bin": {
     "contentful-cli-release": "./contentful-cli-release.js"
+  },
+  "engines": {
+    "node": ">=16"
   },
   "repository": {
     "type": "git",
