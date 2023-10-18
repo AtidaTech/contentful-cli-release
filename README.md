@@ -9,7 +9,7 @@ CMS_RELEASE_ENVIRONMENT_REGEX=release-[0-9]+[\\.]*[0-9]*[\\.]*[0-9]*
 ```
 
 ```text
-// --duplicate-master -to <env>
+// --duplicate-master --to <env>
 // Duplicate Master
 // It should call duplicateEnvironment()
 // Then enableCdaKey()

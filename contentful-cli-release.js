@@ -7,17 +7,17 @@ const RELEASE_CONFIG = './cli-release-config.js'
 const RELEASE_ENVIRONMENT_MAIN = 'master'
 const RELEASE_ENVIRONMENT_PROTECTED = 'dev,staging,master'
 const RELEASE_ENVIRONMENT_REGEX = 'release-[0-9]+[\\.]*[0-9]*[\\.]*[0-9]*'
-// const DEFAULT_LOCALE = 'en-US'
+const DEFAULT_LOCALE = 'en-US'
 
 ;(async function main() {
   try {
-    const localeWorkingDir = process.cwd()
+    const localWorkingDir = process.cwd()
     const scriptDirectory = await getDirNamePath()
     const contentfulManagement = (await import('contentful-management')).default
     const contentfulLib = await import('contentful-lib-helpers')
 
-    const envValues = await getEnvValues(localeWorkingDir, scriptDirectory)
-    const parsedArguments = await parseArguments(localeWorkingDir, envValues)
+    const envValues = await getEnvValues(localWorkingDir, scriptDirectory)
+    const parsedArguments = await parseArguments(localWorkingDir, envValues)
 
     console.log(parsedArguments)
     const spaceSingleton = await getSpace(
@@ -25,6 +25,8 @@ const RELEASE_ENVIRONMENT_REGEX = 'release-[0-9]+[\\.]*[0-9]*[\\.]*[0-9]*'
       contentfulLib,
       parsedArguments
     )
+
+    let result = false
 
     switch (parsedArguments.chosenAction) {
       case 1:
@@ -34,6 +36,7 @@ const RELEASE_ENVIRONMENT_REGEX = 'release-[0-9]+[\\.]*[0-9]*[\\.]*[0-9]*'
           spaceSingleton,
           parsedArguments
         )
+        result = true
         break
       case 2:
         await syncScheduledActions(
@@ -42,17 +45,20 @@ const RELEASE_ENVIRONMENT_REGEX = 'release-[0-9]+[\\.]*[0-9]*[\\.]*[0-9]*'
           spaceSingleton,
           parsedArguments
         )
+        result = true
         break
-      //     case 3:
-      //         await linkMasterAlias(contentful, parsedValues)
-      //         break;
+      //      case 3:
+      //        await linkMasterAlias(contentful, parsedValues)
+      //        break;
       //     case 4:
       //         await syncCurrentMaster(contentful, parsedValues)
       //         break;
     }
 
-    // Show an error
-    console.error('@@/ERROR: No action chosen. Please try again')
+    if (!result) {
+      // Show an error
+      console.error('@@/ERROR: No action chosen. Please try again')
+    }
   } catch (error) {
     console.error('@@/ERROR:', error)
   }
@@ -120,7 +126,7 @@ async function getDirNamePath() {
  * @returns {Promise<object>} The initial settings.
  * @property {string} managementToken - The CMS Management Token.
  * @property {string} spaceId - The CMS Space ID.
- * @property {string} chosenAction - The Chosen action (sync, duplicate, etc.).
+ * @property {number} chosenAction - The Chosen action (sync, duplicate, etc.).
  * @property {boolean} pruneOldReleases - If it should prune old releases when linking the new master env.
  * @property {string} syncPath - The SQLite database file for the sync.
  * @property {string} configPath - The JS config file for the sync.
@@ -191,7 +197,7 @@ async function parseArguments(rootFolder, envValues) {
  * @property {string} environment-id - The FROM environment
  * @property {string} mt - The Contentful Management Token
  * @property {string} management-token - The Contentful Management Token
- * @param {integer} chosenAction - The chosen Action
+ * @param {number} chosenAction - The chosen Action
  * @returns {Promise<string>} Environment for which the action needs to be made
  *
  * @throws {Error} If both 'from/to' and 'environment-id' options are specified or if neither is specified.
@@ -282,8 +288,8 @@ async function duplicateMaster(
     )
 
     // Wait few seconds before checking if environment is available. It might not be
-    let timerId = setInterval(() => {
-      duplicateEnvironment
+    let timerId = await setInterval(async () => {
+      await duplicateEnvironment
         .getEntries({ limit: 1 })
         .then(entries => {
           console.log(
@@ -303,14 +309,14 @@ async function duplicateMaster(
           )
         })
     }, 1000)
+  } else {
+    console.error(
+      `@@/ERROR: There was an error duplicating the environment ${parsedArguments?.environmentId}`
+    )
+    console.error(
+      '@@/ERROR: Please check the input parameters and investigate the previous error messages for more details'
+    )
   }
-
-  console.error(
-    `@@/ERROR: There was an error duplicating the environment ${parsedArguments?.environmentId}`
-  )
-  console.error(
-    '@@/ERROR: Please check the input parameters and investigate the previous error messages for more details'
-  )
 }
 
 /**
