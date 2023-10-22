@@ -1,9 +1,8 @@
 ```dotenv
 CMS_MANAGEMENT_TOKEN=env-management-token
 CMS_SPACE_ID=env-space-id
-CMS_RELEASE_DB=./cli-release.db
-CMS_RELEASE_CONFIG=./cli-release-config.js
-CMS_RELEASE_ENVIRONMENT_MAIN=master
+CMS_RELEASE_SYNC_DB=./cli-release.db
+CMS_RELEASE_SYNC_CONFIG=./cli-release-config.js
 CMS_RELEASE_ENVIRONMENT_PROTECTED=dev,staging,master
 CMS_RELEASE_ENVIRONMENT_REGEX=release-[0-9]+[\\.]*[0-9]*[\\.]*[0-9]*
 ```
@@ -36,4 +35,23 @@ CMS_RELEASE_ENVIRONMENT_REGEX=release-[0-9]+[\\.]*[0-9]*[\\.]*[0-9]*
 // CMS_RELEASE_ENVIRONMENT_MAIN -> usually 'master' environment
 // CMS_RELEASE_ENVIRONMENT_REGEX -> Regular Expression, ie for 'release-x.y.z'
 
+```
+
+```shell
+npx contentful-cli-release --duplicate              --from "master"        --to "release-0.0.2"
+npx contentful-cli-release --sync-actions           --from "master"        --to "release-0.0.2"              --force-yes
+npx contentful-cli-release --sync                   --from "staging"       --to "master"                     --force-yes
+npx contentful-cli-release --link                   --alias "master"       --environment-id "release-0.0.3"  --prune-old-releases
+                                                   (--from)               (--to)
+npx contentful-cli-release --delete                                        --environment-id "master"         --force-yes
+                                                                          (--to)
+```
+
+```shell
+--space-id XXXX
+--management-token
+--sync-db
+--sync-config
+--protected-environments
+--release-regex
 ```
