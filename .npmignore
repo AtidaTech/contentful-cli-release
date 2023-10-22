@@ -1,10 +1,12 @@
 build/*
+.devcontainer/devcontainer.json
 node_modules/*
 export*
 export/
 export/*
 migrations/
 migrations/*
+.vscode/settings.json
 .env
 .env*
 test.js
