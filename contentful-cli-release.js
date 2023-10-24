@@ -28,35 +28,34 @@ const RELEASE_ENVIRONMENT_REGEX = 'release-[0-9]+[\\.]*[0-9]*[\\.]*[0-9]*'
 
     let result = false
 
-    // switch (parsedArguments.chosenAction) {
-    //   case 1:
-    //     await duplicateEnvironment(
-    //       contentfulManagement,
-    //       contentfulLib,
-    //       spaceSingleton,
-    //       parsedArguments
-    //     )
-    //     result = true
-    //     break
-    //   case 2:
-    //     await syncScheduledActions(
-    //       contentfulManagement,
-    //       contentfulLib,
-    //       spaceSingleton,
-    //       parsedArguments
-    //     )
-    //     result = true
-    //     break
-    //   //      case 3:
-    //   //        await linkAlias(contentful, parsedValues)
-    //   //        break;
-    //   //     case 4:
-    //   //         await syncEnvironments(contentful, parsedValues)
-    //   //         break;
-    // }
+    switch (parsedArguments.chosenAction) {
+      case 1:
+        await duplicateEnvironment(
+          contentfulManagement,
+          contentfulLib,
+          spaceSingleton,
+          parsedArguments
+        )
+        result = true
+        break
+      //   case 2:
+      //     await syncScheduledActions(
+      //       contentfulManagement,
+      //       contentfulLib,
+      //       spaceSingleton,
+      //       parsedArguments
+      //     )
+      //     result = true
+      //     break
+      //   //      case 3:
+      //   //        await linkAlias(contentful, parsedValues)
+      //   //        break;
+      //   //     case 4:
+      //   //         await syncEnvironments(contentful, parsedValues)
+      //   //         break;
+    }
 
     if (!result) {
-      // Show an error
       console.error('@@/ERROR: No action chosen. Please try again')
     }
   } catch (error) {
@@ -126,6 +125,7 @@ async function getDirNamePath() {
  * @property {string} spaceId - The CMS Space ID.
  * @property {number} chosenAction - The Chosen action (sync, duplicate, etc.).
  * @property {boolean} forceYes - It will override the protected environments.
+ * @property {boolean} updateApiKey - Updates the API key with same environment name when duplicating an environment.
  * @property {boolean} pruneOldReleases - If it should prune old releases when linking the new master env.
  * @property {string} syncPath - The SQLite database file for the sync.
  * @property {string} configPath - The JS config file for the sync.
@@ -146,6 +146,8 @@ async function parseArguments(rootFolder, envValues) {
       envValues?.CMS_MANAGEMENT_TOKEN ??
       PLACEHOLDER_MANAGEMENT_TOKEN,
     'force-yes': forceYes = false,
+    'update-api-key': updateApiKey = false,
+    'prune-old-releases': pruneOldReleases = false,
     'sync-db': syncPath = envValues?.CMS_RELEASE_SYNC_DB ?? RELEASE_SYNC_DB,
     'sync-config': configPath = envValues?.CMS_RELEASE_SYNC_CONFIG ??
       RELEASE_SYNC_CONFIG,
@@ -159,8 +161,8 @@ async function parseArguments(rootFolder, envValues) {
 
   const argNames = [
     'duplicate',
-    'sync-environments',
-    'sync-scheduled-actions',
+    'sync-entries',
+    'sync-schedule',
     'link',
     'delete'
   ]
@@ -175,7 +177,8 @@ async function parseArguments(rootFolder, envValues) {
     spaceId,
     chosenAction,
     forceYes,
-    pruneOldReleases: parsedArgs.hasOwnProperty('prune-old-releases'),
+    updateApiKey,
+    pruneOldReleases,
     environmentFrom,
     environmentTo,
     syncPath,
@@ -257,6 +260,7 @@ async function getEnvsFromArgs(parsedArgs, chosenAction) {
  * @property {string} spaceId - The CMS Space ID.
  * @property {string} chosenAction - The Chosen action (sync, duplicate, etc.).
  * @property {boolean} forceYes - It will override the protected environments.
+ * @property {boolean} updateApiKey - Updates the API key with same environment name when duplicating an environment.
  * @property {boolean} pruneOldReleases - If it should prune old releases when linking the new master env.
  * @property {string} syncPath - The SQLite database file for the sync.
  * @property {string} configPath - The JS config file for the sync.
@@ -296,6 +300,7 @@ async function getSpace(contentfulManagement, contentfulLib, parsedArguments) {
  * @property {string} spaceId - The CMS Space ID.
  * @property {string} chosenAction - The Chosen action (sync, duplicate, etc.).
  * @property {boolean} forceYes - It will override the protected environments.
+ * @property {boolean} updateApiKey - Updates the API key with same environment name when duplicating an environment.
  * @property {boolean} pruneOldReleases - If it should prune old releases when linking the new master env.
  * @property {string} syncPath - The SQLite database file for the sync.
  * @property {string} configPath - The JS config file for the sync.
@@ -316,7 +321,7 @@ async function validateEnvironments(
       contentfulManagement,
       parsedValues.managementToken,
       parsedValues.spaceId,
-      parsedValues.mainEnvironment
+      parsedValues.environmentFrom
     )) === null
   ) {
     console.error('@@/ERROR: The source environment does not exist!')
@@ -356,6 +361,7 @@ async function validateEnvironments(
  * @property {string} spaceId - The CMS Space ID.
  * @property {string} chosenAction - The Chosen action (sync, duplicate, etc.).
  * @property {boolean} forceYes - It will override the protected environments.
+ * @property {boolean} updateApiKey - Updates the API key with same environment name when duplicating an environment.
  * @property {boolean} pruneOldReleases - If it should prune old releases when linking the new master env.
  * @property {string} syncPath - The SQLite database file for the sync.
  * @property {string} configPath - The JS config file for the sync.
@@ -378,56 +384,58 @@ async function duplicateEnvironment(
     parsedArguments
   )
 
-  const duplicateEnvironment = await contentfulLib.duplicateEnvironment(
+  const duplicatedEnvironment = await contentfulLib.duplicateEnvironment(
     spaceSingleton,
-    parsedArguments?.mainEnvironment,
-    parsedArguments?.environmentId,
+    parsedArguments?.environmentFrom,
+    parsedArguments?.environmentTo,
     3
   )
 
-  if (duplicateEnvironment) {
-    // Enable the CDA key for the new release environment
-    // The CDA key should be named 'master' as the environment
+  if (duplicatedEnvironment && parsedArguments?.updateApiKey) {
+    // Enable the CDA key for the new duplicated environment
+    // The CDA key should be named as the environmentFrom
     const creationKeyResult = await contentfulLib.enableCdaKey(
       spaceSingleton,
-      parsedArguments?.mainEnvironment,
-      parsedArguments?.environmentId
+      parsedArguments?.environmentFrom,
+      parsedArguments?.environmentTo
     )
 
     console.log(
       "##/INFO: CDA '" +
-        parsedArguments?.mainEnvironment +
+        parsedArguments?.environmentFrom +
         "' Key " +
         (creationKeyResult ? '' : 'NOT ') +
         'assigned to environment ' +
-        parsedArguments?.environmentId
+        parsedArguments?.environmentTo
     )
+  }
 
+  if (duplicatedEnvironment) {
     // Wait few seconds before checking if environment is available. It might not be
-    let timerId = await setInterval(async () => {
-      await duplicateEnvironment
+    let intervalObj = setInterval(async () => {
+      await duplicatedEnvironment
         .getEntries({ limit: 1 })
         .then(entries => {
           console.log(
             '##/INFO: ' +
-              parsedArguments?.environmentId +
+              parsedArguments?.environmentTo +
               ' successfully duplicated from ' +
-              parsedArguments?.mainEnvironment
+              parsedArguments?.environmentFrom
           )
 
           // Success, therefore clear the interval
-          clearInterval(timerId)
+          clearInterval(intervalObj)
         })
         .catch(e => {
           console.log(
             '%%/DEBUG: Waiting to retrieve the newly created environment ' +
-              parsedArguments?.environmentId
+              parsedArguments?.environmentTo
           )
         })
     }, 1000)
   } else {
     console.error(
-      `@@/ERROR: There was an error duplicating the environment ${parsedArguments?.environmentId}`
+      `@@/ERROR: There was an error duplicating the environment ${parsedArguments?.environmentTo}`
     )
     console.error(
       '@@/ERROR: Please check the input parameters and investigate the previous error messages for more details'
@@ -446,6 +454,7 @@ async function duplicateEnvironment(
  * @property {string} spaceId - The CMS Space ID.
  * @property {string} chosenAction - The Chosen action (sync, duplicate, etc.).
  * @property {boolean} forceYes - It will override the protected environments.
+ * @property {boolean} updateApiKey - Updates the API key with same environment name when duplicating an environment.
  * @property {boolean} pruneOldReleases - If it should prune old releases when linking the new master env.
  * @property {string} syncPath - The SQLite database file for the sync.
  * @property {string} configPath - The JS config file for the sync.
