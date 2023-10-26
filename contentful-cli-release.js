@@ -24,7 +24,9 @@ const RELEASE_ENVIRONMENT_REGEX = 'release-[0-9]+[\\.]*[0-9]*[\\.]*[0-9]*'
       parsedArguments
     )
 
+    console.log('-------------------------------------')
     console.log(parsedArguments)
+    console.log('-------------------------------------')
 
     let result = false
 
@@ -38,21 +40,24 @@ const RELEASE_ENVIRONMENT_REGEX = 'release-[0-9]+[\\.]*[0-9]*[\\.]*[0-9]*'
         )
         result = true
         break
-      //   case 2:
-      //     await syncScheduledActions(
+      // case 2:
+      //   await syncEnvironments(
       //       contentfulManagement,
       //       contentfulLib,
       //       spaceSingleton,
       //       parsedArguments
-      //     )
-      //     result = true
-      //     break
-      //   //      case 3:
-      //   //        await linkAlias(contentful, parsedValues)
-      //   //        break;
-      //   //     case 4:
-      //   //         await syncEnvironments(contentful, parsedValues)
-      //   //         break;
+      //   )
+      //   result = true
+      //   break
+      case 3:
+        await syncScheduledActions(
+          contentfulManagement,
+          contentfulLib,
+          spaceSingleton,
+          parsedArguments
+        )
+        result = true
+        break
     }
 
     if (!result) {
@@ -444,24 +449,24 @@ async function duplicateEnvironment(
 }
 
 /**
- * Sync scheduled actions from the old to the new master
+ * Sync scheduled actions between two environments.
  *
  * @param {import("contentful-management/dist/typings/contentful-management").ContentfulManagement} contentfulManagement - The Contentful Management client.
  * @param {import("contentful-lib-helpers").} contentfulLib - The Contentful Libraries.
- * @param {import("contentful-management/dist/typings/entities/space").Space} spaceSingleton - A Contentful Space object
- * @param {Object} parsedArguments
- * @property {string} managementToken - The CMS Management Token.
- * @property {string} spaceId - The CMS Space ID.
- * @property {string} chosenAction - The Chosen action (sync, duplicate, etc.).
- * @property {boolean} forceYes - It will override the protected environments.
- * @property {boolean} updateApiKey - Updates the API key with same environment name when duplicating an environment.
- * @property {boolean} pruneOldReleases - If it should prune old releases when linking the new master env.
- * @property {string} syncPath - The SQLite database file for the sync.
- * @property {string} configPath - The JS config file for the sync.
- * @property {String} environmentFrom - The FROM environmentId.
- * @property {String} environmentTo - The TO environmentId.
- * @property {string} protectedEnvironments - A list of protected environment, usually 'dev,staging,master'.
- * @property {string} releaseRegularExpression - A regular expression for the release branches, usually 'release-x.y.z'.
+ * @param {import("contentful-management/dist/typings/entities/space").Space} spaceSingleton - A Contentful Space object.
+ * @param {Object} parsedArguments - Parsed arguments object.
+ * @param {string} parsedArguments.managementToken - The CMS Management Token.
+ * @param {string} parsedArguments.spaceId - The CMS Space ID.
+ * @param {string} parsedArguments.chosenAction - The Chosen action (sync, duplicate, etc.).
+ * @param {boolean} parsedArguments.forceYes - It will override the protected environments.
+ * @param {boolean} parsedArguments.updateApiKey - Updates the API key with the same environment name when duplicating an environment.
+ * @param {boolean} parsedArguments.pruneOldReleases - If it should prune old releases when linking the new master env.
+ * @param {string} parsedArguments.syncPath - The SQLite database file for the sync.
+ * @param {string} parsedArguments.configPath - The JS config file for the sync.
+ * @param {string} parsedArguments.environmentFrom - The FROM environmentId.
+ * @param {string} parsedArguments.environmentTo - The TO environmentId.
+ * @param {string} parsedArguments.protectedEnvironments - A list of protected environments, usually 'dev,staging,master'.
+ * @param {string} parsedArguments.releaseRegularExpression - A regular expression for the release branches, usually 'release-x.y.z'.
  *
  * @returns {Promise<void>}
  */
@@ -475,5 +480,135 @@ async function syncScheduledActions(
     contentfulManagement,
     contentfulLib,
     parsedArguments
+  )
+
+  const srcEnvironment = parsedArguments?.environmentFrom ?? 'master'
+  const limit = 500
+
+  let scheduledActions
+  try {
+    scheduledActions = await spaceSingleton.getScheduledActions({
+      'environment.sys.id': srcEnvironment,
+      'sys.status': 'scheduled',
+      limit: limit
+    })
+  } catch (e) {
+    console.error('@@/ERROR: ' + e)
+    return
+  }
+
+  console.log("##/INFO: Source Environment: '" + srcEnvironment + "'")
+
+  // Fetch existing scheduled actions from destination environment for deduplication
+  let destScheduledActions,
+    destEnvironment = parsedArguments?.environmentTo ?? 'undefined'
+  try {
+    destScheduledActions = await spaceSingleton.getScheduledActions({
+      'environment.sys.id': destEnvironment,
+      'sys.status': 'scheduled',
+      limit: limit
+    })
+  } catch (e) {
+    console.error(
+      "@@/ERROR: Destination environment '" +
+        destEnvironment +
+        "' does not exist."
+    )
+    return
+  }
+
+  logScheduledItemInfo(scheduledActions, destEnvironment)
+
+  for (const scheduledItem of scheduledActions?.items || []) {
+    const actionExists = destScheduledActions.items.some(
+      item =>
+        item.entity.sys.id === scheduledItem.entity.sys.id &&
+        item.entity.sys.linkType === scheduledItem.entity.sys.linkType &&
+        item.entity.action === scheduledItem.entity.action &&
+        item.scheduledFor.datetime === scheduledItem.scheduledFor.datetime &&
+        item.scheduledFor.timezone === scheduledItem.scheduledFor.timezone
+    )
+
+    if (scheduledItem && destEnvironment && !actionExists) {
+      try {
+        const scheduledAction = await spaceSingleton.createScheduledAction({
+          entity: {
+            sys: {
+              type: 'Link',
+              linkType: 'Entry',
+              id: scheduledItem?.entity?.sys?.id
+            }
+          },
+          environment: {
+            sys: {
+              type: 'Link',
+              linkType: 'Environment',
+              id: parsedArguments.environmentTo
+            }
+          },
+          action: scheduledItem?.action,
+          scheduledFor: {
+            datetime: scheduledItem?.scheduledFor?.datetime,
+            timezone: scheduledItem?.scheduledFor?.timezone
+          }
+        })
+
+        console.log(
+          '%%/DEBUG: Imported scheduled action: ' +
+            formatScheduledAction(scheduledAction)
+        )
+      } catch (e) {
+        console.error(
+          '@@ERROR: Destination environment does not exist or has exceeded max scheduled actions.'
+        )
+      }
+    } else {
+      console.log(
+        '%%/DEBUG: Scheduled action already exists - ID: ' +
+          scheduledItem?.entity?.sys?.id
+      )
+    }
+  }
+}
+
+/**
+ * Formats a scheduled action for logging.
+ *
+ * @param {Object} scheduledAction - The scheduled action to format.
+ * @param {Object} scheduledAction.action - The action type of the scheduled item.
+ * @param {Object} scheduledAction.entity - Entity information of the scheduled action.
+ * @param {Object} scheduledAction.entity.sys - System information of the entity.
+ * @param {string} scheduledAction.entity.sys.linkType - Link type of the entity (e.g. 'Entry').
+ * @param {string} scheduledAction.entity.sys.id - ID of the entity.
+ * @param {Object} scheduledAction.scheduledFor - Scheduling details of the action.
+ * @param {string} scheduledAction.scheduledFor.datetime - The datetime the action is scheduled for.
+ * @returns {string} - A formatted string representation of the scheduled action.
+ */
+async function formatScheduledAction(scheduledAction) {
+  const dayjs = (await import('dayjs')).default
+
+  return (
+    scheduledAction?.action[0].toUpperCase() +
+    scheduledAction?.action.slice(1) +
+    ' for ' +
+    scheduledAction?.entity?.sys?.linkType +
+    "-Id: '" +
+    scheduledAction?.entity?.sys?.id +
+    "' for the: " +
+    dayjs(scheduledAction?.scheduledFor?.datetime).format('YYYY-MM-DD HH:mm')
+  )
+}
+
+/**
+ * Logs information related to scheduled actions and the destination environment.
+ *
+ * @param {Object} scheduledActions - The scheduled actions from the source environment.
+ * @param {Object[]} scheduledActions.items - List of scheduled action items.
+ * @param {string} destEnvironment - The ID of the destination environment.
+ */
+function logScheduledItemInfo(scheduledActions, destEnvironment) {
+  console.log("##/INFO: Destination Environment: '" + destEnvironment + "'")
+  console.log(
+    '##/INFO: Total Scheduled Actions: ' + scheduledActions?.items?.length ?? 0
   )
 }

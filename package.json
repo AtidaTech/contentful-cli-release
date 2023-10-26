@@ -37,6 +37,7 @@
   "dependencies": {
     "contentful-lib-helpers": ">=0.2.1",
     "contentful-management": ">7.50.0",
+    "dayjs": "^1.11.10",
     "minimist": "^1.2.8"
   },
   "devDependencies": {

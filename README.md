@@ -39,8 +39,8 @@ CMS_RELEASE_ENVIRONMENT_REGEX=release-[0-9]+[\\.]*[0-9]*[\\.]*[0-9]*
 
 ```shell
 npx contentful-cli-release --duplicate              --from "master"        --to "release-0.0.2"
-npx contentful-cli-release --sync-actions           --from "master"        --to "release-0.0.2"              --force-yes
-npx contentful-cli-release --sync                   --from "staging"       --to "master"                     --force-yes
+npx contentful-cli-release --sync-schedule          --from "master"        --to "release-0.0.2"              --force-yes
+npx contentful-cli-release --sync-entries           --from "staging"       --to "master"                     --force-yes
 npx contentful-cli-release --link                   --alias "master"       --environment-id "release-0.0.3"  --prune-old-releases
                                                    (--from)               (--to)
 npx contentful-cli-release --delete                                        --environment-id "master"         --force-yes
