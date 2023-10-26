@@ -1,7 +1,10 @@
 #! /usr/bin/env node
 
+import { linkAliasToEnvironment } from 'contentful-lib-helpers'
+
 const PLACEHOLDER_MANAGEMENT_TOKEN = 'placeholder-management-token'
 const PLACEHOLDER_SPACE_ID = 'placeholder-space-id'
+const RELEASE_MAX_SCHEDULED_ACTIONS = 500
 const RELEASE_SYNC_DB = './cli-release.db'
 const RELEASE_SYNC_CONFIG = './cli-release-config.js'
 const RELEASE_ENVIRONMENT_PROTECTED = 'dev,staging,master'
@@ -23,10 +26,6 @@ const RELEASE_ENVIRONMENT_REGEX = 'release-[0-9]+[\\.]*[0-9]*[\\.]*[0-9]*'
       contentfulLib,
       parsedArguments
     )
-
-    console.log('-------------------------------------')
-    console.log(parsedArguments)
-    console.log('-------------------------------------')
 
     let result = false
 
@@ -58,10 +57,31 @@ const RELEASE_ENVIRONMENT_REGEX = 'release-[0-9]+[\\.]*[0-9]*[\\.]*[0-9]*'
         )
         result = true
         break
+      case 4:
+        await contentfulLib.linkAliasToEnvironment(
+          spaceSingleton,
+          parsedArguments?.environmentTo, // environment
+          parsedArguments?.environmentFrom, // alias
+          parsedArguments?.releaseRegularExpression,
+          parsedArguments?.protectedEnvironments,
+          parsedArguments?.pruneOldReleases,
+          3 // Max verbosity level for extended logging in CLI
+        )
+        result = true
+        break
+      case 5:
+        result = await contentfulLib.deleteEnvironment(
+          await spaceSingleton.getEnvironment(parsedArguments?.environmentTo),
+          3, // Max verbosity level for extended logging in CLI
+          parsedArguments?.protectedEnvironments.split(',')
+        )
+        break
     }
 
     if (!result) {
-      console.error('@@/ERROR: No action chosen. Please try again')
+      console.error(
+        '@@/ERROR: No action chosen or Returned an error. Inspect the logs and try again'
+      )
     }
   } catch (error) {
     console.error('@@/ERROR:', error)
@@ -76,6 +96,7 @@ const RELEASE_ENVIRONMENT_REGEX = 'release-[0-9]+[\\.]*[0-9]*[\\.]*[0-9]*'
  * @return {Promise<object>} The environment values.
  * @property {string} CMS_MANAGEMENT_TOKEN - The CMA token for Contentful.
  * @property {string} CMS_SPACE_ID - The Space ID.
+ * @property {string} CMS_RELEASE_MAX_SCHEDULED_ACTIONS - Max number of scheduled actions to retrieve.
  * @property {string} CMS_RELEASE_SYNC_DB - The SQLite database file for the sync.
  * @property {string} CMS_RELEASE_SYNC_CONFIG - The JS config file for the sync.
  * @property {string} CMS_RELEASE_ENVIRONMENT_PROTECTED - A list of protected environment, usually 'dev,staging,master'.
@@ -119,12 +140,13 @@ async function getDirNamePath() {
  *
  * @param {string} rootFolder - The directory path where the .env files are located.
  * @param {Object} envValues - The .env values loaded.
- * @property {string} CMS_MANAGEMENT_TOKEN - The CMA token for Contentful.
- * @property {string} CMS_SPACE_ID - The Space ID.
- * @property {string} CMS_RELEASE_SYNC_DB - The SQLite database file for the sync.
- * @property {string} CMS_RELEASE_SYNC_CONFIG - The JS config file for the sync.
- * @property {string} CMS_RELEASE_ENVIRONMENT_PROTECTED - A list of protected environment, usually 'dev,staging,master'.
- * @property {string} CMS_RELEASE_ENVIRONMENT_REGEX - A regular expression for the release branches, usually 'release-x.y.z'.
+ * @property {string} envValues.CMS_MANAGEMENT_TOKEN - The CMA token for Contentful.
+ * @property {string} envValues.CMS_SPACE_ID - The Space ID.
+ * @property {string} envValues.CMS_RELEASE_MAX_SCHEDULED_ACTIONS - Max number of scheduled actions to retrieve.
+ * @property {string} envValues.CMS_RELEASE_SYNC_DB - The SQLite database file for the sync.
+ * @property {string} envValues.CMS_RELEASE_SYNC_CONFIG - The JS config file for the sync.
+ * @property {string} envValues.CMS_RELEASE_ENVIRONMENT_PROTECTED - A list of protected environment, usually 'dev,staging,master'.
+ * @property {string} envValues.CMS_RELEASE_ENVIRONMENT_REGEX - A regular expression for the release branches, usually 'release-x.y.z'.
  * @returns {Promise<object>} The initial settings.
  * @property {string} managementToken - The CMS Management Token.
  * @property {string} spaceId - The CMS Space ID.
@@ -132,10 +154,11 @@ async function getDirNamePath() {
  * @property {boolean} forceYes - It will override the protected environments.
  * @property {boolean} updateApiKey - Updates the API key with same environment name when duplicating an environment.
  * @property {boolean} pruneOldReleases - If it should prune old releases when linking the new master env.
+ * @property {String} environmentFrom - The FROM environmentId. (or --alias when linking alias to environment)
+ * @property {String} environmentTo - The TO environmentId. (or --environment-id when using --link or --delete)
  * @property {string} syncPath - The SQLite database file for the sync.
  * @property {string} configPath - The JS config file for the sync.
- * @property {String} environmentFrom - The FROM environmentId.
- * @property {String} environmentTo - The TO environmentId.
+ * @property {string} maxScheduledActions - The Max number of scheduled actions to retrieve during sync-schedule.
  * @property {string} protectedEnvironments - A list of protected environment, usually 'dev,staging,master'.
  * @property {string} releaseRegularExpression - A regular expression for the release branches, usually 'release-x.y.z'.
  *
@@ -156,6 +179,9 @@ async function parseArguments(rootFolder, envValues) {
     'sync-db': syncPath = envValues?.CMS_RELEASE_SYNC_DB ?? RELEASE_SYNC_DB,
     'sync-config': configPath = envValues?.CMS_RELEASE_SYNC_CONFIG ??
       RELEASE_SYNC_CONFIG,
+    'max-scheduled-actions':
+      maxScheduledActions = envValues?.CMS_RELEASE_MAX_SCHEDULED_ACTIONS ??
+        RELEASE_MAX_SCHEDULED_ACTIONS,
     'protected-environments':
       protectedEnvironments = envValues?.CMS_RELEASE_ENVIRONMENT_PROTECTED ??
         RELEASE_ENVIRONMENT_PROTECTED,
@@ -188,6 +214,7 @@ async function parseArguments(rootFolder, envValues) {
     environmentTo,
     syncPath,
     configPath,
+    maxScheduledActions,
     protectedEnvironments,
     releaseRegularExpression
   }
@@ -197,12 +224,12 @@ async function parseArguments(rootFolder, envValues) {
  * This function checks arguments and extract the environmentId
  *
  * @param {Object} parsedArgs - The object that contains the parsed command line arguments.
- * @property {string} from - The FROM environment
- * @property {string} to - The TO environment
- * @property {string} mt - The Contentful Management Token
- * @property {string} management-token - The Contentful Management Token
- * @property {string} alias - The Environment Alias for '--link'
- * @property {string} environment-id - The Environment-id for '--link' or '--delete'
+ * @property {string} parsedArgs.from - The FROM environment
+ * @property {string} parsedArgs.to - The TO environment
+ * @property {string} parsedArgs.mt - The Contentful Management Token
+ * @property {string} parsedArgs.management-token - The Contentful Management Token
+ * @property {string} parsedArgs.alias - The Environment Alias for '--link'
+ * @property {string} parsedArgs.environment-id - The Environment-id for '--link' or '--delete'
  * @param {number} chosenAction - The chosen action
  * @returns {Promise<{environmentTo: string, environmentFrom: string}>}
  *
@@ -260,19 +287,20 @@ async function getEnvsFromArgs(parsedArgs, chosenAction) {
  *
  * @param {import("contentful-management/dist/typings/contentful-management").ContentfulManagement} contentfulManagement - The Contentful Management client.
  * @param {import("contentful-lib-helpers").} contentfulLib - The Contentful Libraries.
- * @param {Object} parsedArguments
- * @property {string} managementToken - The CMS Management Token.
- * @property {string} spaceId - The CMS Space ID.
- * @property {string} chosenAction - The Chosen action (sync, duplicate, etc.).
- * @property {boolean} forceYes - It will override the protected environments.
- * @property {boolean} updateApiKey - Updates the API key with same environment name when duplicating an environment.
- * @property {boolean} pruneOldReleases - If it should prune old releases when linking the new master env.
- * @property {string} syncPath - The SQLite database file for the sync.
- * @property {string} configPath - The JS config file for the sync.
- * @property {String} environmentFrom - The FROM environmentId.
- * @property {String} environmentTo - The TO environmentId.
- * @property {string} protectedEnvironments - A list of protected environment, usually 'dev,staging,master'.
- * @property {string} releaseRegularExpression - A regular expression for the release branches, usually 'release-x.y.z'.
+ * @param {Object} parsedArguments - Parsed arguments object.
+ * @param {string} parsedArguments.managementToken - The CMS Management Token.
+ * @param {string} parsedArguments.spaceId - The CMS Space ID.
+ * @param {string} parsedArguments.chosenAction - The Chosen action (sync, duplicate, etc.).
+ * @param {boolean} parsedArguments.forceYes - It will override the protected environments.
+ * @param {boolean} parsedArguments.updateApiKey - Updates the API key with the same environment name when duplicating an environment.
+ * @param {boolean} parsedArguments.pruneOldReleases - If it should prune old releases when linking the new master env.
+ * @param {string} parsedArguments.environmentFrom - The FROM environmentId.
+ * @param {string} parsedArguments.environmentTo - The TO environmentId.
+ * @param {string} parsedArguments.syncPath - The SQLite database file for the sync.
+ * @param {string} parsedArguments.configPath - The JS config file for the sync.
+ * @param {string} parsedArguments.maxScheduledActions - The Max number of scheduled actions to retrieve during sync-schedule.
+ * @param {string} parsedArguments.protectedEnvironments - A list of protected environments, usually 'dev,staging,master'.
+ * @param {string} parsedArguments.releaseRegularExpression - A regular expression for the release branches, usually 'release-x.y.z'.
  *
  * @returns {Promise<import("contentful-management/dist/typings/entities/space").Space|null>} - A Promise that resolves with the Space object, or `null` if not found.
  */
@@ -300,45 +328,47 @@ async function getSpace(contentfulManagement, contentfulLib, parsedArguments) {
 /**
  * @param {import("contentful-management/dist/typings/contentful-management").ContentfulManagement} contentfulManagement - The Contentful Management client.
  * @param {import("contentful-lib-helpers").} contentfulLib - The Contentful Libraries.
- * @param {Object} parsedValues
- * @property {string} managementToken - The CMS Management Token.
- * @property {string} spaceId - The CMS Space ID.
- * @property {string} chosenAction - The Chosen action (sync, duplicate, etc.).
- * @property {boolean} forceYes - It will override the protected environments.
- * @property {boolean} updateApiKey - Updates the API key with same environment name when duplicating an environment.
- * @property {boolean} pruneOldReleases - If it should prune old releases when linking the new master env.
- * @property {string} syncPath - The SQLite database file for the sync.
- * @property {string} configPath - The JS config file for the sync.
- * @property {String} environmentFrom - The FROM environmentId.
- * @property {String} environmentTo - The TO environmentId.
- * @property {string} protectedEnvironments - A list of protected environment, usually 'dev,staging,master'.
- * @property {string} releaseRegularExpression - A regular expression for the release branches, usually 'release-x.y.z'.
+ * @param {Object} parsedArguments - Parsed arguments object.
+ * @param {string} parsedArguments.managementToken - The CMS Management Token.
+ * @param {string} parsedArguments.spaceId - The CMS Space ID.
+ * @param {number} parsedArguments.chosenAction - The Chosen action (sync, duplicate, etc.).
+ * @param {boolean} parsedArguments.forceYes - It will override the protected environments.
+ * @param {boolean} parsedArguments.updateApiKey - Updates the API key with the same environment name when duplicating an environment.
+ * @param {boolean} parsedArguments.pruneOldReleases - If it should prune old releases when linking the new master env.
+ * @param {string} parsedArguments.environmentFrom - The FROM environmentId.
+ * @param {string} parsedArguments.environmentTo - The TO environmentId.
+ * @param {string} parsedArguments.syncPath - The SQLite database file for the sync.
+ * @param {string} parsedArguments.configPath - The JS config file for the sync.
+ * @param {string} parsedArguments.maxScheduledActions - The Max number of scheduled actions to retrieve during sync-schedule.
+ * @param {string} parsedArguments.protectedEnvironments - A list of protected environments, usually 'dev,staging,master'.
+ * @param {string} parsedArguments.releaseRegularExpression - A regular expression for the release branches, usually 'release-x.y.z'.
  *
  * @return {Promise<void>}
  */
 async function validateEnvironments(
   contentfulManagement,
   contentfulLib,
-  parsedValues
+  parsedArguments
 ) {
   if (
     (await contentfulLib.getEnvironment(
       contentfulManagement,
-      parsedValues.managementToken,
-      parsedValues.spaceId,
-      parsedValues.environmentFrom
+      parsedArguments.managementToken,
+      parsedArguments.spaceId,
+      parsedArguments.environmentFrom
     )) === null
   ) {
     console.error('@@/ERROR: The source environment does not exist!')
     process.exit(1)
   }
 
-  const excludedEnvironments = parsedValues.protectedEnvironments.split(',')
+  const excludedEnvironments = parsedArguments.protectedEnvironments.split(',')
   if (
-    (excludedEnvironments.includes(parsedValues.environmentTo) &&
-      [2, 3, 5].includes(parsedValues.chosenAction) &&
-      !parsedValues?.forceYes) ||
-    parsedValues.environmentTo === ''
+    (excludedEnvironments.includes(parsedArguments.environmentTo) &&
+      // 2 - sync-entries / 3 - sync-scheduled / 5 - delete environment
+      [2, 3, 5].includes(parsedArguments.chosenAction) &&
+      !parsedArguments?.forceYes) ||
+    parsedArguments.environmentTo === ''
   ) {
     console.error(
       '@@/ERROR: The destination environment is either empty or reserved!'
@@ -346,8 +376,8 @@ async function validateEnvironments(
     process.exit(1)
   }
 
-  // const regex = new RegExp(parsedValues.releaseRegularExpression, 'g')
-  // if (!parsedValues.environmentTo.match(regex)) {
+  // const regex = new RegExp(parsedArguments.releaseRegularExpression, 'g')
+  // if (!parsedArguments.environmentTo.match(regex)) {
   //   console.error(
   //     '@@/ERROR: The destination environment should be following the proper naming convention.'
   //   )
@@ -361,19 +391,20 @@ async function validateEnvironments(
  * @param {import("contentful-management/dist/typings/contentful-management").ContentfulManagement} contentfulManagement - The Contentful Management client.
  * @param {import("contentful-lib-helpers").} contentfulLib - The Contentful Libraries.
  * @param {import("contentful-management/dist/typings/entities/space").Space} spaceSingleton - A Contentful Space object
- * @param {Object} parsedArguments
- * @property {string} managementToken - The CMS Management Token.
- * @property {string} spaceId - The CMS Space ID.
- * @property {string} chosenAction - The Chosen action (sync, duplicate, etc.).
- * @property {boolean} forceYes - It will override the protected environments.
- * @property {boolean} updateApiKey - Updates the API key with same environment name when duplicating an environment.
- * @property {boolean} pruneOldReleases - If it should prune old releases when linking the new master env.
- * @property {string} syncPath - The SQLite database file for the sync.
- * @property {string} configPath - The JS config file for the sync.
- * @property {String} environmentFrom - The FROM environmentId.
- * @property {String} environmentTo - The TO environmentId.
- * @property {string} protectedEnvironments - A list of protected environment, usually 'dev,staging,master'.
- * @property {string} releaseRegularExpression - A regular expression for the release branches, usually 'release-x.y.z'.
+ * @param {Object} parsedArguments - Parsed arguments object.
+ * @param {string} parsedArguments.managementToken - The CMS Management Token.
+ * @param {string} parsedArguments.spaceId - The CMS Space ID.
+ * @param {number} parsedArguments.chosenAction - The Chosen action (sync, duplicate, etc.).
+ * @param {boolean} parsedArguments.forceYes - It will override the protected environments.
+ * @param {boolean} parsedArguments.updateApiKey - Updates the API key with the same environment name when duplicating an environment.
+ * @param {boolean} parsedArguments.pruneOldReleases - If it should prune old releases when linking the new master env.
+ * @param {string} parsedArguments.environmentFrom - The FROM environmentId.
+ * @param {string} parsedArguments.environmentTo - The TO environmentId.
+ * @param {string} parsedArguments.syncPath - The SQLite database file for the sync.
+ * @param {string} parsedArguments.configPath - The JS config file for the sync.
+ * @param {string} parsedArguments.maxScheduledActions - The Max number of scheduled actions to retrieve during sync-schedule.
+ * @param {string} parsedArguments.protectedEnvironments - A list of protected environments, usually 'dev,staging,master'.
+ * @param {string} parsedArguments.releaseRegularExpression - A regular expression for the release branches, usually 'release-x.y.z'.
  *
  * @returns {Promise<void>}
  */
@@ -457,14 +488,15 @@ async function duplicateEnvironment(
  * @param {Object} parsedArguments - Parsed arguments object.
  * @param {string} parsedArguments.managementToken - The CMS Management Token.
  * @param {string} parsedArguments.spaceId - The CMS Space ID.
- * @param {string} parsedArguments.chosenAction - The Chosen action (sync, duplicate, etc.).
+ * @param {number} parsedArguments.chosenAction - The Chosen action (sync, duplicate, etc.).
  * @param {boolean} parsedArguments.forceYes - It will override the protected environments.
  * @param {boolean} parsedArguments.updateApiKey - Updates the API key with the same environment name when duplicating an environment.
  * @param {boolean} parsedArguments.pruneOldReleases - If it should prune old releases when linking the new master env.
- * @param {string} parsedArguments.syncPath - The SQLite database file for the sync.
- * @param {string} parsedArguments.configPath - The JS config file for the sync.
  * @param {string} parsedArguments.environmentFrom - The FROM environmentId.
  * @param {string} parsedArguments.environmentTo - The TO environmentId.
+ * @param {string} parsedArguments.syncPath - The SQLite database file for the sync.
+ * @param {string} parsedArguments.configPath - The JS config file for the sync.
+ * @param {string} parsedArguments.maxScheduledActions - The Max number of scheduled actions to retrieve during sync-schedule.
  * @param {string} parsedArguments.protectedEnvironments - A list of protected environments, usually 'dev,staging,master'.
  * @param {string} parsedArguments.releaseRegularExpression - A regular expression for the release branches, usually 'release-x.y.z'.
  *
@@ -483,7 +515,7 @@ async function syncScheduledActions(
   )
 
   const srcEnvironment = parsedArguments?.environmentFrom ?? 'master'
-  const limit = 500
+  const limit = parsedArguments?.maxScheduledActions ?? 500
 
   let scheduledActions
   try {
@@ -564,8 +596,8 @@ async function syncScheduledActions(
       }
     } else {
       console.log(
-        '%%/DEBUG: Scheduled action already exists - ID: ' +
-          scheduledItem?.entity?.sys?.id
+        '%%/DEBUG: Scheduled action already exists - Action-Id: ' +
+          scheduledItem?.sys?.id
       )
     }
   }
@@ -575,7 +607,7 @@ async function syncScheduledActions(
  * Formats a scheduled action for logging.
  *
  * @param {Object} scheduledAction - The scheduled action to format.
- * @param {Object} scheduledAction.action - The action type of the scheduled item.
+ * @param {string} scheduledAction.action - The action type of the scheduled item.
  * @param {Object} scheduledAction.entity - Entity information of the scheduled action.
  * @param {Object} scheduledAction.entity.sys - System information of the entity.
  * @param {string} scheduledAction.entity.sys.linkType - Link type of the entity (e.g. 'Entry').
