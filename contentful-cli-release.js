@@ -1,7 +1,5 @@
 #! /usr/bin/env node
 
-import { linkAliasToEnvironment } from 'contentful-lib-helpers'
-
 const PLACEHOLDER_MANAGEMENT_TOKEN = 'placeholder-management-token'
 const PLACEHOLDER_SPACE_ID = 'placeholder-space-id'
 const RELEASE_MAX_SCHEDULED_ACTIONS = 500
@@ -588,7 +586,7 @@ async function syncScheduledActions(
 
         console.log(
           '%%/DEBUG: Imported scheduled action: ' +
-            await formatScheduledAction(scheduledAction)
+            (await formatScheduledAction(scheduledAction))
         )
       } catch (e) {
         console.error(

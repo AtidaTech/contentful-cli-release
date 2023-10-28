@@ -16,7 +16,7 @@ integrating with CI/CD pipelines such as GitLab or GitHub.
 <hr />
 
 [✨ Features](#-features) · [💡 Installation](#-installation) · [📟 Example](#-example) · [🎹 Usage](#-usage) · 
-[🚀 Release](#-managing-a-release) · [📅 ToDo](#-todo) · [👾 Contributors](#-contributors) · 
+[🚀 Release](#-managing-a-release) · [📅 ToDo](#-todo) · [👾 Contributors](#-contributors) ·
 [🎩 Acknowledgments](#-acknowledgements) · [📚 Collection](#-other-scripts-in-the-same-collection) ·
 [📄 License](#-license)
 
@@ -113,7 +113,7 @@ npx contentful-cli-release --duplicate --from SOURCE_ENV --to DEST_ENV (--update
 Arguments:
 
 - `--from`: The name of the source environment to duplicate from. Ie: 'master'.
-- `--to`: The name of the destination environment to duplicate to: Ie: 'release-1.4.5'
+- `--to`: The name of the destination environment to duplicate to. Ie: 'release-1.7.4' or 'staging'. 
 - `--update-api-key`: It will enable, for the duplicated environment, the CDA API Key that has the same name of the 
   source environment (so, for environment 'master', the CDA API Key should be also called 'master').
 
@@ -174,8 +174,8 @@ $ npx contentful-cli-release --duplicate --from master
 
 ### Sync Schedule
 
-Synchronize scheduled actions between two environments. Ideally the source is the 'old' master and the destination is 
-the newly created release environment.
+Synchronize scheduled actions between two Environments, because the actions are not copied when duplicating an 
+Environment. Ideally the source is the 'old' master and the destination is the newly created release environment.
 
 Usage:
 
@@ -186,7 +186,7 @@ npx contentful-cli-release --sync-schedule --from SOURCE_ENV --to DEST_ENV (--fo
 Arguments:
 
 - `--from`: The name of the source environment where the existing scheduled actions are. Ie: 'master'.
-- `--to`: The name of the destination environment to copy the scheduled actions to: Ie: 'release-1.4.5'
+- `--to`: The name of the destination environment to copy the scheduled actions to. Ie: 'release-1.4.5'.
 - `--force-yes`: When the destination environment is protected, this will allow to perform the action.
 
 > See the section [🎹 Usage](#-usage) for details on the command line options.
@@ -197,9 +197,9 @@ Arguments:
   <summary>Successful sync between two Environments</summary>
 
 ```shell
-$ npx contentful-cli-release --sync-schedule --from master --to staging --force-yes
+$ npx contentful-cli-release --sync-schedule --from master --to release-1.4.5 --force-yes
 ##/INFO: Source Environment: 'master'
-##/INFO: Destination Environment: 'staging'
+##/INFO: Destination Environment: 'release-1.4.5'
 ##/INFO: Total Scheduled Actions: 2
 ##/DEBUG: Imported scheduled action: Publish for Entry-Id: '5krek3qkuRtWxRyIqM012a' for the: 2023-10-29 19:00
 ##/DEBUG: Imported scheduled action: Unpublish for Entry-Id: 'GKfodiofTQFS8oXjJp65Yb' for the: 2023-10-29 20:00
@@ -211,9 +211,9 @@ $ npx contentful-cli-release --sync-schedule --from master --to staging --force-
   <summary>Skips already imported actions (to avoid duplicates)</summary>
 
 ```shell
-$ npx contentful-cli-release --sync-schedule --from master --to staging --force-yes
+$ npx contentful-cli-release --sync-schedule --from master --to release-1.4.5 --force-yes
 ##/INFO: Source Environment: 'master'
-##/INFO: Destination Environment: 'staging'
+##/INFO: Destination Environment: 'release-1.4.5'
 ##/INFO: Total Scheduled Actions: 2
 ##/DEBUG: Scheduled action already exists - Action-Id: 6jTzhTAOPs5LsbpjRZKkF3
 ##/DEBUG: Scheduled action already exists - Action-Id: 2HVGh3wJRSp8P6ZW18YI92
@@ -224,7 +224,7 @@ $ npx contentful-cli-release --sync-schedule --from master --to staging --force-
   <summary>Error when 'to' Environment is protected</summary>
 
 ```shell
-$ npx contentful-cli-release --sync-schedule --from master --to staging
+$ npx contentful-cli-release --sync-schedule --from master --to release-1.4.5
 @@/ERROR: The destination environment is either empty or reserved!
 ```
 </details>
@@ -239,6 +239,77 @@ $ npx contentful-cli-release --sync-schedule --from master
 </details>
 
 ### Link Alias
+It links an existing alias from one Environment to another one. This is used during a Release to move, for example,
+the 'master' alias from the old release branch to the new one
+
+Usage:
+
+```bash
+npx contentful-cli-release --link --alias ALIAS --environment-id TARGET_ENV (--prune-old-releases)
+```
+
+Arguments:
+
+- `--alias`: The existing alias that needs to be updated. Ie: 'master'.
+- `--to`: The target Environment-id to which the alias will point to. Ie: 'release-1.4.5'.
+- `--prune-old-releases`: Using the release regular expression, it will delete all the older releases, except
+the current one (ie: 'release-1.4.5') and the previous one (ie: 'release-1.4.4') that was associated with the 
+'master' alias.
+
+> See the section [🎹 Usage](#-usage) for details on the command line options.
+
+#### Response and Errors
+
+<details>
+  <summary>Successful use with the '--prune-old-releases' option</summary>
+
+```shell
+$ npx contentful-cli-release --link --alias master --environment-id release-1.4.5 --prune-old-releases
+##/INFO: Linking Environment 'release-1.4.5' to Alias 'master'
+##/INFO: Alias 'master' updated to 'release-1.4.5' Environment.
+##INFO: Deleting old Release Environments
+##/INFO: Processing the list of all environments
+##/INFO: This environment will NOT be deleted: dev
+##/INFO: This environment will NOT be deleted: staging
+##/INFO: This environment will NOT be deleted: release-1.4.5 aliased by master
+##/INFO: List of Release environments that will be kept:
+- release-1.4.5
+- release-1.4.4
+##/INFO: List of Release environments that will be deleted:
+- release-1.4.3
+##/DEBUG: Environment 'release-1.4.3' is going to be deleted!
+##/INFO: Deleting environment 'release-1.4.3'.
+##/DEBUG: Environment 'release-1.4.3' was deleted.
+```
+</details>
+
+<details>
+  <summary>Successful use without the '--prune-old-releases' option</summary>
+
+```shell
+$ npx contentful-cli-release --link --alias master --environment-id release-1.4.5
+##/INFO: Linking Environment 'release-1.4.5' to Alias 'master'
+##/INFO: Alias 'master' updated to 'release-1.4.5' Environment.
+```
+</details>
+
+<details>
+  <summary>Error when '--alias' is missing</summary>
+
+```shell
+$ npx contentful-cli-release --link --environment-id release-1.4.5
+@@/ERROR: You should specify an '--alias' option when using '--link'
+```
+</details>
+
+<details>
+  <summary>Error when '--environment-id' is missing</summary>
+
+```shell
+$ npx contentful-cli-release --link --alias master
+@@/ERROR: You should specify an '--environment-id' option when using '--delete' or '--link'
+```
+</details>
 
 ### Delete an Environment
 
