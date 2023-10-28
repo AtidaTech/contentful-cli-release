@@ -355,7 +355,8 @@ async function validateEnvironments(
       contentfulManagement,
       parsedArguments.managementToken,
       parsedArguments.spaceId,
-      parsedArguments.environmentFrom
+      parsedArguments.environmentFrom,
+      0
     )) === null
   ) {
     console.error('@@/ERROR: The source environment does not exist!')
@@ -441,7 +442,7 @@ async function duplicateEnvironment(
         parsedArguments?.environmentFrom +
         "' Key " +
         (creationKeyResult ? '' : 'NOT ') +
-        'assigned to environment ' +
+        'assigned to environment: ' +
         parsedArguments?.environmentTo
     )
   }
@@ -455,7 +456,7 @@ async function duplicateEnvironment(
           console.log(
             '##/INFO: ' +
               parsedArguments?.environmentTo +
-              ' successfully duplicated from ' +
+              ' successfully duplicated from: ' +
               parsedArguments?.environmentFrom
           )
 
@@ -464,7 +465,7 @@ async function duplicateEnvironment(
         })
         .catch(e => {
           console.log(
-            '%%/DEBUG: Waiting to retrieve the newly created environment ' +
+            '%%/DEBUG: Waiting to retrieve the newly created environment: ' +
               parsedArguments?.environmentTo
           )
         })
@@ -587,7 +588,7 @@ async function syncScheduledActions(
 
         console.log(
           '%%/DEBUG: Imported scheduled action: ' +
-            formatScheduledAction(scheduledAction)
+            await formatScheduledAction(scheduledAction)
         )
       } catch (e) {
         console.error(
@@ -614,7 +615,8 @@ async function syncScheduledActions(
  * @param {string} scheduledAction.entity.sys.id - ID of the entity.
  * @param {Object} scheduledAction.scheduledFor - Scheduling details of the action.
  * @param {string} scheduledAction.scheduledFor.datetime - The datetime the action is scheduled for.
- * @returns {string} - A formatted string representation of the scheduled action.
+ *
+ * @returns {Promise<string>} - A formatted string representation of the scheduled action.
  */
 async function formatScheduledAction(scheduledAction) {
   const dayjs = (await import('dayjs')).default

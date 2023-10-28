@@ -35,7 +35,7 @@
     "lint-fix": "node_modules/eslint/bin/eslint.js --resolve-plugins-relative-to ./ --ext js,mjs,cjs,jsx,ts,tsx ./contentful-cli-release.js --fix"
   },
   "dependencies": {
-    "contentful-lib-helpers": ">=0.2.1",
+    "contentful-lib-helpers": ">=0.3.0",
     "contentful-management": ">7.50.0",
     "dayjs": "^1.11.10",
     "minimist": "^1.2.8"

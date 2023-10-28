@@ -107,17 +107,75 @@ It skips the duplication if the destination environment already exists.
 Usage:
 
 ```bash
-npx contentful-cli-release --duplicate --from SOURCE_ENV --to DEST_ENV (--force-yes)
+npx contentful-cli-release --duplicate --from SOURCE_ENV --to DEST_ENV (--update-api-key)
 ```
 
 Arguments:
 
 - `--from`: The name of the source environment to duplicate from. Ie: 'master'.
 - `--to`: The name of the destination environment to duplicate to: Ie: 'release-1.4.5'
+- `--update-api-key`: It will enable, for the duplicated environment, the CDA API Key that has the same name of the 
+  source environment (so, for environment 'master', the CDA API Key should be also called 'master').
+
+> See the section [🎹 Usage](#-usage) for details on the command line options.
+
+#### Response and Errors
+
+<details>
+  <summary>Successful duplication</summary>
+
+```shell
+$ npx contentful-cli-release --duplicate --from master --to release-1.7.4 --update-api-key
+##/INFO: Duplicating environment 'master' for space 'xxxxxxxxx'
+##/DEBUG: Creating new environment: 'release-1.7.4'
+##/INFO: Environment 'release-1.7.4' successfully created
+##/INFO: CDA 'master' Key assigned to environment: release-1.7.4
+##/DEBUG: Waiting to retrieve the newly created environment: release-1.7.4
+##/DEBUG: Waiting to retrieve the newly created environment: release-1.7.4
+##/DEBUG: Waiting to retrieve the newly created environment: release-1.7.4
+...
+##/INFO: release-1.7.4 successfully duplicated from: master
+```
+</details>
+
+<details>
+  <summary>Skips creation, but associates the Key and pings the environment</summary>
+
+```shell
+$ npx contentful-cli-release --duplicate --from master --to release-1.7.4 --update-api-key
+##/INFO: Duplicating environment 'master' for space 'xxxxxxxxx'
+##/INFO: An environment with this name already exists: 'release-1.7.4'. Skipping creation
+##/INFO: CDA 'master' Key assigned to environment: release-1.7.4
+##/DEBUG: Waiting to retrieve the newly created environment: release-1.7.4
+##/DEBUG: Waiting to retrieve the newly created environment: release-1.7.4
+##/DEBUG: Waiting to retrieve the newly created environment: release-1.7.4
+...
+##/INFO: release-1.7.4 successfully duplicated from: master
+```
+</details>
+
+<details>
+  <summary>Error when Source environment doesn't exists</summary>
+
+```shell
+$ npx contentful-cli-release --duplicate --from myenvironment --to release-1.7.4
+@@/ERROR: The source environment does not exist!
+```
+</details>
+
+<details>
+  <summary>Error when 'from' or 'to' environments are missing</summary>
+
+```shell
+$ npx contentful-cli-release --duplicate --from master
+@@/ERROR: You should specify both a '--from' and a '--to' option.
+```
+</details>
 
 ### Sync Schedule
 
-Synchronize scheduled actions between two environments.
+Synchronize scheduled actions between two environments. Ideally the source is the 'old' master and the destination is 
+the newly created release environment.
 
 Usage:
 
@@ -129,7 +187,56 @@ Arguments:
 
 - `--from`: The name of the source environment where the existing scheduled actions are. Ie: 'master'.
 - `--to`: The name of the destination environment to copy the scheduled actions to: Ie: 'release-1.4.5'
-- `--force-yes`: When the destination environment is protected, this will allow to perform the action. 
+- `--force-yes`: When the destination environment is protected, this will allow to perform the action.
+
+> See the section [🎹 Usage](#-usage) for details on the command line options.
+
+#### Response and Errors
+
+<details>
+  <summary>Successful sync between two Environments</summary>
+
+```shell
+$ npx contentful-cli-release --sync-schedule --from master --to staging --force-yes
+##/INFO: Source Environment: 'master'
+##/INFO: Destination Environment: 'staging'
+##/INFO: Total Scheduled Actions: 2
+##/DEBUG: Imported scheduled action: Publish for Entry-Id: '5krek3qkuRtWxRyIqM012a' for the: 2023-10-29 19:00
+##/DEBUG: Imported scheduled action: Unpublish for Entry-Id: 'GKfodiofTQFS8oXjJp65Yb' for the: 2023-10-29 20:00
+```
+</details>
+
+
+<details>
+  <summary>Skips already imported actions (to avoid duplicates)</summary>
+
+```shell
+$ npx contentful-cli-release --sync-schedule --from master --to staging --force-yes
+##/INFO: Source Environment: 'master'
+##/INFO: Destination Environment: 'staging'
+##/INFO: Total Scheduled Actions: 2
+##/DEBUG: Scheduled action already exists - Action-Id: 6jTzhTAOPs5LsbpjRZKkF3
+##/DEBUG: Scheduled action already exists - Action-Id: 2HVGh3wJRSp8P6ZW18YI92
+```
+</details>
+
+<details>
+  <summary>Error when 'to' Environment is protected</summary>
+
+```shell
+$ npx contentful-cli-release --sync-schedule --from master --to staging
+@@/ERROR: The destination environment is either empty or reserved!
+```
+</details>
+
+<details>
+  <summary>Error when 'from' or 'to' Environments are missing</summary>
+
+```shell
+$ npx contentful-cli-release --sync-schedule --from master
+@@/ERROR: You should specify both a '--from' and a '--to' option.
+```
+</details>
 
 ### Link Alias
 
