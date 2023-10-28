@@ -68,10 +68,18 @@ const RELEASE_ENVIRONMENT_REGEX = 'release-[0-9]+[\\.]*[0-9]*[\\.]*[0-9]*'
         result = true
         break
       case 5:
+        let protectedEnvironments =
+          parsedArguments?.protectedEnvironments.split(',') ?? []
+
+        // We empty the protected environments if it has been passed '--force-yes' option
+        if (parsedArguments?.forceYes) {
+          protectedEnvironments = []
+        }
+
         result = await contentfulLib.deleteEnvironment(
           await spaceSingleton.getEnvironment(parsedArguments?.environmentTo),
           3, // Max verbosity level for extended logging in CLI
-          parsedArguments?.protectedEnvironments.split(',')
+          protectedEnvironments
         )
         break
     }

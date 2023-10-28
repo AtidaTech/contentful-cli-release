@@ -312,6 +312,63 @@ $ npx contentful-cli-release --link --alias master
 </details>
 
 ### Delete an Environment
+This function allows to delete an Environment via the CLI tool. It automatically forbids to delete the 
+configured protected environments, unless we use the option '--force-yes'.
+
+Usage:
+
+```bash
+npx contentful-cli-release --delete --environment-id TARGET_ENV (--force-yes)
+```
+
+Arguments:
+
+- `--environment-id`: The name of the environment to be deleted.
+- `--force-yes`: When the destination environment is protected, this will allow to perform the action.
+
+> See the section [🎹 Usage](#-usage) for details on the command line options.
+
+#### Response and Errors
+
+<details>
+  <summary>Success when the environment is not protected</summary>
+
+```shell
+$ npx contentful-cli-release --delete --environment-id test
+##/INFO: Deleting environment 'test'.
+##/DEBUG: Environment 'test' was deleted.
+```
+</details>
+
+<details>
+  <summary>Success when using '--force-yes'</summary>
+
+```shell
+$ npx contentful-cli-release --delete --environment-id staging --force-yes
+##/INFO: Deleting environment 'staging'.
+##/DEBUG: Environment 'staging' was deleted.
+```
+</details>
+
+
+<details>
+  <summary>Error when the environment is protected</summary>
+
+```shell
+$ npx contentful-cli-release --delete --environment-id staging
+@@/ERROR: Environment 'staging' is protected and cannot be deleted.
+@@/ERROR: No action chosen or Returned an error. Inspect the logs and try again
+```
+</details>
+
+<details>
+  <summary>Error when '--environment-id' is missing</summary>
+
+```shell
+$ npx contentful-cli-release --delete
+@@/ERROR: You should specify an '--environment-id' option when using '--delete' or '--link'
+```
+</details>
 
 ## 🎹 Usage
 
