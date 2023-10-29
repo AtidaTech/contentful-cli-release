@@ -55,7 +55,7 @@ bun add contentful-cli-release
 * `node` >= 18
 * `npm` >= 9.5.0
 * `contentful-management` >= 7.50.0
-* [contentful-lib-helpers](https://www.npmjs.com/package/contentful-lib-helpers) >= 0.2.1
+* [contentful-lib-helpers](https://www.npmjs.com/package/contentful-lib-helpers) >= 0.3.0
 
 
 ### Set-up
@@ -374,22 +374,39 @@ $ npx contentful-cli-release --delete
 
 This script can be used from the command line and accepts various arguments for customization:
 
-[//]: # (* `--space-id`: The Contentful space id.)
-[//]: # (* `--management-token` or `--mt`: The Contentful Management Token.)
-[//]: # (* `--to` or `--environment-id` [MANDATORY]: )
-[//]: # (* `--force-yes`: The script runs a migration at a time, asking you to confirm it manually &#40;Y/N&#41;.)
-[//]: # (In a CD/CI pipeline, you will need to set up `--force-yes` so that all migrations will run without any request)
-[//]: # (for interaction.)
-
+* `--space-id`: The Contentful space id. It will override the env value `CMS_SPACE_ID`.
+* `--management-token` or `--mt`: The Contentful Management Token. It will override the env value `CMS_MANAGEMENT_TOKEN`.
+* `--from`: The source Environment-id when performing a duplication or a sync-schedule.
+* `--alias`: Mandatory only for the link alias option. It represents the alias that we want to associate with another
+Environment.
+* `--to` or `--environment-id`: The target Environment-id.
+* `--update-api-key`: When performing a duplication. It enables a CDA API Key also for the new environment. The only
+constraint is that the API Key should have the same name of the source Environment. Ie: 'master' API Key for the 'master'
+Environment, that will be enabled also for the new duplicated release Environment.
+* `--prune-old-releases`: When running a `--link` alias operation, it will keep the latest two releases and delete the
+older ones. The releases are identified by the regular expression defined in the env file or overridden via additional
+command line parameter.
+* `--force-yes`: It forces the operation when the target Environment-id is considered protected. The protected
+Environments are listed in the env value `CMS_RELEASE_ENVIRONMENT_PROTECTED` or overridden with the following option.
+* `--protected-environments`: It sets a list (separated by comma) of protected environments. It overrides the env
+value `CMS_RELEASE_ENVIRONMENT_PROTECTED`. This prevents accidentally deleting or performing operations on an
+Environment that is used for production or for important day-to-day work. Ie: 'dev,staging,master'.
+* `--release-regex`: It overrides the env value `CMS_RELEASE_ENVIRONMENT_REGEX`. It identifies a regular expression
+that will match the release branch naming. The default one matches a fixed part `release-` and then the numbering
+of a release, like `x.y.z`. The regular expression can be modified, however the script will use the numbering part
+to do a natural ordering (so 1.4.10 is bigger than 1.4.9 and smaller than 1.5) when deciding which older releases
+need to be automatically deleted when using `--prune-old-releases` option.
+* `--max-scheduled-actions`: It overrides the env value `CMS_RELEASE_MAX_SCHEDULED_ACTIONS` and it represents the
+total number of scheduled actions that should be retrieved. By default, the value is set to the maximum value allowed
+of 500.
 
 ## 🚀 Managing a Release
 
 
 ## 📅 Todo
 
-* Add a '--sync-entries' option to sync entries between two releases.
-* Add a '--help' command to describe the available command line options.
-* Extend compatibility with other Contentful tools and integrations.
+* Add a `--sync-entries` option to sync entries between two release Environments.
+* Add a `--help` command to describe the available command line options.
 * Improve logging and error handling for more transparent releases.
 * Incorporate feedback from the community to enhance tool capabilities.
 
@@ -409,11 +426,11 @@ Feel free to open issues or pull requests in our GitHub Repository if you have s
 
 I would like to express my gratitude to the following parties:
 
-* [Atida 🔗](https://www.atida.com/), the company that has allowed these scripts to be open sourced. Atida is an 
-  e-commerce platform that sells beauty and medical products. Their support for open source is greatly appreciated. 
-  A special thank to <a href="https://github.com/shoopi"><img src="https://images.weserv.nl/?url=avatars.githubusercontent.com/u/1385372?v=4&h=16&w=16&fit=cover&mask=circle&maxage=7d" width="16px;" alt="Shaya Pourmirza" /> Shaya Pourmirza</a> 
+* [Atida 🔗](https://www.atida.com/), the company that has allowed these scripts to be open sourced. Atida is an
+  e-commerce platform that sells beauty and medical products. Their support for open source is greatly appreciated.
+  A special thank to <a href="https://github.com/shoopi"><img src="https://images.weserv.nl/?url=avatars.githubusercontent.com/u/1385372?v=4&h=16&w=16&fit=cover&mask=circle&maxage=7d" width="16px;" alt="Shaya Pourmirza" /> Shaya Pourmirza</a>
   that has been a great promoter and supporter of this initiative inside the company.
-* [Contentful 🔗](https://www.contentful.com/), for creating their excellent content management platform and the 
+* [Contentful 🔗](https://www.contentful.com/), for creating their excellent content management platform and the
   JavaScript CMA SDK that this library is built on. Without their work, this project would not be possible.
 
 Thank you to everyone involved!
