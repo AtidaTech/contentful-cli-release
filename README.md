@@ -224,7 +224,7 @@ $ npx contentful-cli-release --sync-schedule --from master --to release-1.4.5 --
   <summary>Error when 'to' Environment is protected</summary>
 
 ```shell
-$ npx contentful-cli-release --sync-schedule --from master --to release-1.4.5
+$ npx contentful-cli-release --sync-schedule --from master --to staging
 @@/ERROR: The destination environment is either empty or reserved!
 ```
 </details>
@@ -245,7 +245,7 @@ the 'master' alias from the old release branch to the new one
 Usage:
 
 ```bash
-npx contentful-cli-release --link --alias ALIAS --environment-id TARGET_ENV (--prune-old-releases)
+npx contentful-cli-release --link --alias ALIAS --to TARGET_ENV (--prune-old-releases)
 ```
 
 Arguments:
@@ -264,7 +264,7 @@ the current one (ie: 'release-1.4.5') and the previous one (ie: 'release-1.4.4')
   <summary>Successful use with the '--prune-old-releases' option</summary>
 
 ```shell
-$ npx contentful-cli-release --link --alias master --environment-id release-1.4.5 --prune-old-releases
+$ npx contentful-cli-release --link --alias master --to release-1.4.5 --prune-old-releases
 ##/INFO: Linking Environment 'release-1.4.5' to Alias 'master'
 ##/INFO: Alias 'master' updated to 'release-1.4.5' Environment.
 ##INFO: Deleting old Release Environments
@@ -287,7 +287,7 @@ $ npx contentful-cli-release --link --alias master --environment-id release-1.4.
   <summary>Successful use without the '--prune-old-releases' option</summary>
 
 ```shell
-$ npx contentful-cli-release --link --alias master --environment-id release-1.4.5
+$ npx contentful-cli-release --link --alias master --to release-1.4.5
 ##/INFO: Linking Environment 'release-1.4.5' to Alias 'master'
 ##/INFO: Alias 'master' updated to 'release-1.4.5' Environment.
 ```
@@ -297,13 +297,13 @@ $ npx contentful-cli-release --link --alias master --environment-id release-1.4.
   <summary>Error when '--alias' is missing</summary>
 
 ```shell
-$ npx contentful-cli-release --link --environment-id release-1.4.5
+$ npx contentful-cli-release --link --to release-1.4.5
 @@/ERROR: You should specify an '--alias' option when using '--link'
 ```
 </details>
 
 <details>
-  <summary>Error when '--environment-id' is missing</summary>
+  <summary>Error when '--to' is missing</summary>
 
 ```shell
 $ npx contentful-cli-release --link --alias master

@@ -17,7 +17,7 @@ const RELEASE_ENVIRONMENT_REGEX = 'release-[0-9]+[\\.]*[0-9]*[\\.]*[0-9]*'
     const contentfulLib = await import('contentful-lib-helpers')
 
     const envValues = await getEnvValues(localWorkingDir, scriptDirectory)
-    const parsedArguments = await parseArguments(localWorkingDir, envValues)
+    const parsedArguments = await parseArguments(envValues)
 
     const spaceSingleton = await getSpace(
       contentfulManagement,
@@ -86,7 +86,7 @@ const RELEASE_ENVIRONMENT_REGEX = 'release-[0-9]+[\\.]*[0-9]*[\\.]*[0-9]*'
 
     if (!result) {
       console.error(
-        '@@/ERROR: No action chosen or Returned an error. Inspect the logs and try again'
+        '@@/ERROR: No action chosen or returned an error. Inspect the logs and try again'
       )
     }
   } catch (error) {
@@ -95,10 +95,10 @@ const RELEASE_ENVIRONMENT_REGEX = 'release-[0-9]+[\\.]*[0-9]*[\\.]*[0-9]*'
 })()
 
 /**
- * Reads environment values from .env files.
+ * Reads environment values from .env and .env.local files.
  *
- * @param {string} localWorkingDir - The directory path where the .env files are located.
- * @param {string} scriptDirectory - The directory path where the library is installed
+ * @param {string} localWorkingDir - The directory path where the library is located.
+ * @param {string} scriptDirectory - The directory path where the script is running.
  * @return {Promise<object>} The environment values.
  * @property {string} CMS_MANAGEMENT_TOKEN - The CMA token for Contentful.
  * @property {string} CMS_SPACE_ID - The Space ID.
@@ -144,7 +144,6 @@ async function getDirNamePath() {
 /**
  * Parses command line arguments and sets default values.
  *
- * @param {string} rootFolder - The directory path where the .env files are located.
  * @param {Object} envValues - The .env values loaded.
  * @property {string} envValues.CMS_MANAGEMENT_TOKEN - The CMA token for Contentful.
  * @property {string} envValues.CMS_SPACE_ID - The Space ID.
@@ -170,7 +169,7 @@ async function getDirNamePath() {
  *
  * @throws {Error} If '--from' and '--to' are not provided, or if '--management-token' or '--mt' are duplicated.
  */
-async function parseArguments(rootFolder, envValues) {
+async function parseArguments(envValues) {
   const minimist = (await import('minimist')).default
   const parsedArgs = minimist(process.argv.slice(2))
 
@@ -289,7 +288,7 @@ async function getEnvsFromArgs(parsedArgs, chosenAction) {
 }
 
 /**
- * Check if the destination environment exists before running the migration(s)
+ * Retrieves the Contentful Space object
  *
  * @param {import("contentful-management/dist/typings/contentful-management").ContentfulManagement} contentfulManagement - The Contentful Management client.
  * @param {import("contentful-lib-helpers").} contentfulLib - The Contentful Libraries.
@@ -320,10 +319,10 @@ async function getSpace(contentfulManagement, contentfulLib, parsedArguments) {
 
   if (!spaceSingleton) {
     console.error(
-      `@@/ERROR: Unable to retrieve Destination space-id '${parsedArguments?.spaceId}'!`
+      `@@/ERROR: Unable to retrieve the space-id '${parsedArguments?.spaceId}'!`
     )
     console.error(
-      `@@/ERROR: Could also be that the management token or space-id are invalid.`
+      `@@/ERROR: Could be that either the management token or the space-id are invalid.`
     )
     process.exit(1)
   }
@@ -393,7 +392,7 @@ async function validateEnvironments(
 }
 
 /**
- * Duplicate the current master into a new environment
+ * Duplicate an environment into a new one
  *
  * @param {import("contentful-management/dist/typings/contentful-management").ContentfulManagement} contentfulManagement - The Contentful Management client.
  * @param {import("contentful-lib-helpers").} contentfulLib - The Contentful Libraries.
