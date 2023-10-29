@@ -7,15 +7,15 @@
 
 # Contentful CLI Release Tool
 
-This tool is a utility for managing releases in Contentful. It streamlines the process of branching, releasing, and 
-integrating with CI/CD pipelines such as GitLab or GitHub.
+This tool is a utility for managing releases in Contentful. It streamlines the process of branching, releasing, and
+integrating with CI/CD pipelines such as GitLab or GitHub, by leveraging the use of Environments and Environment aliases.
 
-<h3>Sponsored by <a href="https://github.com/AtidaTech"><b>Atida</b> 
+<h3>Sponsored by <a href="https://github.com/AtidaTech"><b>Atida</b>
 <img src="https://avatars.githubusercontent.com/u/127305035?s=200&v=4" width="14px;" alt="Atida" /></a></h3>
 
 <hr />
 
-[✨ Features](#-features) · [💡 Installation](#-installation) · [📟 Example](#-example) · [🎹 Usage](#-usage) · 
+[✨ Features](#-features) · [💡 Installation](#-installation) · [📟 Example](#-example) · [🎹 Usage](#-usage) ·
 [🚀 Release](#-managing-a-release) · [📅 ToDo](#-todo) · [👾 Contributors](#-contributors) ·
 [🎩 Acknowledgments](#-acknowledgements) · [📚 Collection](#-other-scripts-in-the-same-collection) ·
 [📄 License](#-license)
@@ -64,8 +64,8 @@ To get the most out of the Contentful CLI Release tool, proper setup is crucial.
 you get started:
 
 1. **Environment Variables**:
-   The tool uses environment variables to simplify repetitive tasks and ensure security. Instead of passing sensitive 
-   data as command line arguments every time, you can set them once in your environment. We recommend using a `.env` 
+   The tool uses environment variables to simplify repetitive tasks and ensure security. Instead of passing sensitive
+   data as command line arguments every time, you can set them once in your environment. We recommend using a `.env`
    file for this purpose. Here's a sample configuration:
 
    ```env
@@ -75,26 +75,26 @@ you get started:
    CMS_RELEASE_ENVIRONMENT_PROTECTED=dev,staging,master
    CMS_RELEASE_ENVIRONMENT_REGEX=release-[0-9]+[\\.]*[0-9]*[\\.]*[0-9]*
    ```
-   
-   Create the `.env` or `.env.local` files in your project to override the default configuration. But ensure to 
+
+   Create the `.env` or `.env.local` files in your project to override the default configuration. But ensure to
    replace the placeholders (e.g., `placeholder-management-token` and `placeholder-space-id`) with your actual data.
 
 [//]: # (CMS_RELEASE_SYNC_DB=./cli-release.db)
 [//]: # (CMS_RELEASE_SYNC_CONFIG=./cli-release-config.js)
 
 2. **Max Scheduled Actions**:
-   The `CMS_RELEASE_MAX_SCHEDULED_ACTIONS` parameter sets the number of scheduled actions (in total) to be retrieved. 
+   The `CMS_RELEASE_MAX_SCHEDULED_ACTIONS` parameter sets the number of scheduled actions (in total) to be retrieved.
    Default and maximum value is `500`.
 
 3. **Protected Environments**:
-   The `CMS_RELEASE_ENVIRONMENT_PROTECTED` parameter lists environments that should not be modified by the tool, 
+   The `CMS_RELEASE_ENVIRONMENT_PROTECTED` parameter lists environments that should not be modified by the tool,
    ensuring safety for crucial stages like `dev`, `staging`, and `master`.
 
 3. **Environment Naming Convention**:
-   Using the `CMS_RELEASE_ENVIRONMENT_REGEX`, you can specify a regex pattern to match the naming convention of your 
+   Using the `CMS_RELEASE_ENVIRONMENT_REGEX`, you can specify a regex pattern to match the naming convention of your
    release environments. The default pattern matches names like `release-1`, `release-1.1`, and `release-1.1.1`.
 
-With these steps, you should have a fully configured environment ready to utilize the Contentful CLI Release tool 
+With these steps, you should have a fully configured environment ready to utilize the Contentful CLI Release tool
 effectively. Always refer back to the tool's documentation if you need further assistance.
 
 ## 📟 Example
@@ -113,8 +113,8 @@ npx contentful-cli-release --duplicate --from SOURCE_ENV --to DEST_ENV (--update
 Arguments:
 
 - `--from`: The name of the source environment to duplicate from. Ie: 'master'.
-- `--to`: The name of the destination environment to duplicate to. Ie: 'release-1.7.4' or 'staging'. 
-- `--update-api-key`: It will enable, for the duplicated environment, the CDA API Key that has the same name of the 
+- `--to`: The name of the destination environment to duplicate to. Ie: 'release-1.7.4' or 'staging'.
+- `--update-api-key`: It will enable, for the duplicated environment, the CDA API Key that has the same name of the
   source environment (so, for environment 'master', the CDA API Key should be also called 'master').
 
 > See the section [🎹 Usage](#-usage) for details on the command line options.
@@ -174,7 +174,7 @@ $ npx contentful-cli-release --duplicate --from master
 
 ### Sync Schedule
 
-Synchronize scheduled actions between two Environments, because the actions are not copied when duplicating an 
+Synchronize scheduled actions between two Environments, because the actions are not copied when duplicating an
 Environment. Ideally the source is the 'old' master and the destination is the newly created release environment.
 
 Usage:
@@ -253,7 +253,7 @@ Arguments:
 - `--alias`: The existing alias that needs to be updated. Ie: 'master'.
 - `--to`: The target Environment-id to which the alias will point to. Ie: 'release-1.4.5'.
 - `--prune-old-releases`: Using the release regular expression, it will delete all the older releases, except
-the current one (ie: 'release-1.4.5') and the previous one (ie: 'release-1.4.4') that was associated with the 
+the current one (ie: 'release-1.4.5') and the previous one (ie: 'release-1.4.4') that was associated with the
 'master' alias.
 
 > See the section [🎹 Usage](#-usage) for details on the command line options.
@@ -312,7 +312,7 @@ $ npx contentful-cli-release --link --alias master
 </details>
 
 ### Delete an Environment
-This function allows to delete an Environment via the CLI tool. It automatically forbids to delete the 
+This function allows to delete an Environment via the CLI tool. It automatically forbids to delete the
 configured protected environments, unless we use the option '--force-yes'.
 
 Usage:
@@ -341,6 +341,16 @@ $ npx contentful-cli-release --delete --environment-id test
 </details>
 
 <details>
+  <summary>Error when the environment is protected</summary>
+
+```shell
+$ npx contentful-cli-release --delete --environment-id staging
+@@/ERROR: Environment 'staging' is protected and cannot be deleted.
+@@/ERROR: No action chosen or Returned an error. Inspect the logs and try again
+```
+</details>
+
+<details>
   <summary>Success when using '--force-yes'</summary>
 
 ```shell
@@ -350,16 +360,6 @@ $ npx contentful-cli-release --delete --environment-id staging --force-yes
 ```
 </details>
 
-
-<details>
-  <summary>Error when the environment is protected</summary>
-
-```shell
-$ npx contentful-cli-release --delete --environment-id staging
-@@/ERROR: Environment 'staging' is protected and cannot be deleted.
-@@/ERROR: No action chosen or Returned an error. Inspect the logs and try again
-```
-</details>
 
 <details>
   <summary>Error when '--environment-id' is missing</summary>
@@ -402,6 +402,42 @@ of 500.
 
 ## 🚀 Managing a Release
 
+It has been said that Contentful Environments are equivalent to Git Branches. And meanwhile this is practically
+true from the user point of view, it does not transform automatically to a simple release strategy.
+In addition, although there are different functionalities that helps with releasing content (Contentful Workflow
+and Launch work very good for that) or keeping two Environments in sync (this is what the new Contentful Merge does),
+for many developers is missing the possibility to easily integrate Contentful into their release strategy.
+
+This is what this tool is for, together with our two other scripts:
+* ['contentful-cli-export'](https://www.npmjs.com/package/contentful-cli-export)
+* ['contentful-cli-migrations'](https://www.npmjs.com/package/contentful-cli-migrations)
+
+The idea behind is to use these tools via command line (without having to install them) to integrate them inside a
+CI/CD of your liking. By using one `.env` file, that can be injected in your CI/CD, or by passing the right parameters
+via command line options, these tools are self-sufficient in running even the more complex tasks during a release.
+In particular, actions like duplicating an Environment, or changing the Environment alias to that new duplicate, are
+all things that can be done seamlessly with one centralized logic. We will run through few examples and to show you
+how efficient your release strategy can be.
+
+### Different Release Strategies
+
+We will take into consideration the most common release strategies and scenarios, but obviously you will want (or need)
+to tailor the actions to your specific use-case. Feel free to reach out and suggest some we haven't thought about and
+we will promptly add to this list.
+
+#### Promoting 'staging' to production
+
+
+
+#### If you only have 3 environments (Community)
+
+#### Create a new Release from 'master'
+
+### Integrating with your CI/CD
+
+#### Integrating with GitLab
+
+#### Integrating with GitHub
 
 ## 📅 Todo
 
