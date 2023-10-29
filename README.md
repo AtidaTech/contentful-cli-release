@@ -402,15 +402,19 @@ of 500.
 
 ## 🚀 Managing a Release
 
-It has been said that Contentful Environments are equivalent to Git Branches. And meanwhile this is practically
+It has been said that Contentful Environments are equivalent to GIT Branches. And meanwhile this is practically
 true from the user point of view, it does not transform automatically to a simple release strategy.
 In addition, although there are different functionalities that helps with releasing content (Contentful Workflow
 and Launch work very good for that) or keeping two Environments in sync (this is what the new Contentful Merge does),
 for many developers is missing the possibility to easily integrate Contentful into their release strategy.
 
 This is what this tool is for, together with our two other scripts:
-* ['contentful-cli-export'](https://www.npmjs.com/package/contentful-cli-export)
-* ['contentful-cli-migrations'](https://www.npmjs.com/package/contentful-cli-migrations)
+* **Contentful CLI Export:**
+[![npm](https://img.shields.io/npm/v/contentful-cli-export)](https://npmjs.com/package/contentful-cli-export)
+![Downloads](https://img.shields.io/npm/dw/contentful-cli-export)
+* **Contentful CLI Migrations:**
+[![npm](https://img.shields.io/npm/v/contentful-cli-migrations)](https://npmjs.com/package/contentful-cli-migrations)
+![Downloads](https://img.shields.io/npm/dw/contentful-cli-migrations)
 
 The idea behind is to use these tools via command line (without having to install them) to integrate them inside a
 CI/CD of your liking. By using one `.env` file, that can be injected in your CI/CD, or by passing the right parameters
@@ -437,10 +441,10 @@ master. Let's see how we could use `contentful-cli-release` and the other tools 
 environments:
 
 ```
-- Environment `master`
+- Environment 'master'
 - Environment 'master-backup'
-- Environment `staging`
-- Environment `dev`
+- Environment 'staging'
+- Environment 'dev'
 ```
 
 What we wil simply do is to back up the involved Environments first, and then delete the oldest one to make room for
@@ -483,12 +487,14 @@ that is aliased by `master`.
 
 Let's assume this is the starting scenario:
 ```
-- Environment `release-1.4.5` aliased by `master`
-- Environment `staging`
-- Environment `dev`
+- Environment `release-1.4.5` aliased by 'master'
+- Environment 'staging'
+- Environment 'dev'
 ```
 
-This release is more
+In this case, the release process is already more structured and reliable. It diminishes downtime and it allows
+to bring the new release Environment at the same state of content, content-types and scheduled actions as the 'old'
+master, ensuring high reliability of operations. The usage of the `--link` alias function also help reduce downtime.
 
 ```shell
 $ npx contentful-cli-export --from "staging" --compress
@@ -501,13 +507,127 @@ $ npx contentful-cli-release --link --alias "master" --to "release-1.4.6"
 $ npx contentful-cli-release --duplicate --from "master" --to "staging"
 ```
 
+Let's see in details:
+1. We make a compressed backup of `staging` (downloadable as an artifact in the CI/CD).
+2. We also make a compressed backup of the current `master` (downloadable as an artifact in the CI/CD).
+3. We delete 'staging' with the `--delete` option of the script. We pass `--force-yes` since by default 'staging' is a
+protected Environment.
+4. We then duplicate 'master' into a new release Environment. Ideally the Semantic versioning should follow the same
+numbering as the one from the GIT release of the application, but we will dive into it in the section [Integrating with
+your CI/CD](#integrating-with-your-cicd). We use `--update-api-key` to ensure that the new release Environment will be
+accessible with the 'master' CDA API Key.
+5. We continue by copying the Scheduled actions from 'master' to the newly created 'release-1.4.6' Environment.
+6. We apply Contentful Migrations automatically using the cli script `contentful-cli-migrations` from our
+collection of scripts. The `--force-yes` option will automatically apply all the missing migrations to the new
+Environment.
+7. We proceed to switch the alias of 'master' from the old release (1.4.5) to the new one (1.4.6) guaranteeing minimal
+downtime.
+8. At the end we will duplicate the new 'master' as the new 'staging', so that development can continue on a 'staging'
+Environment that is an exact copy of production. We don't use the `--update-api-key` option, because it should exist
+a 'staging' CDA API Key, separated from the 'master' one.
+
 #### 3. Create a new Release from existing 'master'
+
+This is somehow the most complex, but also the most reliable way of performing a release.
+
+The starting scenario is something like this
+```
+- Environment 'release-1.4.5' aliased by 'master'
+- Environment 'release-1.4.4' for rollbacks
+- Environment 'staging'
+- Environment 'dev'
+```
+
+As we can notice, it does not seem that much different from the previous one, but it is for the following reasons:
+
+- `release-1.4.4` is the previous release environment and is kept (unlinked by aliases) for two main reasons. One is
+for backup, in case something bad happens to the current master. The second one is to allow a 'fast' rollback in case
+a deployment goes wrong and the previous 'code' version needs to be released. The two versions might be incompatible
+if Contentful migrations have modified the Content-types.
+- `staging` is detached from the `master` release. This ensures that the development and testing flow can proceed
+without interruptions and without dependencies from the production release. `staging` itself could be another
+Environment alias, for which a different release strategy could be in place.
+- For this you will need a non-free version of Contentful, that usually guarantees at least 2 Environment aliases
+and more than 5 environments (an additional environment is needed to create the new release).
+
+In addition, during a release of this type is probably beneficial to split all the operations on the new release
+Environment from the `--link --alias` command, since the 'code' release itself has to probably take place in between,
+to guarantee practically no downtime.
+
+**Before the code release**
+```shell
+$ npx contentful-cli-export --from "master" --compress
+$ npx contentful-cli-release --duplicate --from "master" --to "release-1.4.6" --update-api-key
+$ npx contentful-cli-migrations --to "release-1.4.6" --force-yes
+```
+
+After this stage the Environments will look like:
+```
+- Environment 'release-1.4.6'
+- Environment 'release-1.4.5' aliased by 'master'
+- Environment 'release-1.4.4'
+- Environment 'staging'
+- Environment 'dev'
+```
+
+**After the code release**
+```shell
+$ npx contentful-cli-release --link --alias "master" --to "release-1.4.6" --prune-old-releases
+$ npx contentful-cli-release --sync-schedule --from "release-1.4.5" --to "master" --force-yes
+```
+
+The linking master to the new release will also delete old releases than the latest two, making the final
+Environments look like:
+```
+- Environment 'release-1.4.6' aliased by 'master'
+- Environment 'release-1.4.5' for rollbacks
+- Environment 'staging'
+- Environment 'dev'
+```
 
 ### Integrating with your CI/CD
 
+The following are **examples** of how you could integrate what we said in your GitLab or GitHub CI/CD pipeline.
+The examples are not fully working without the context of your application and set-ups, but are a good start.
+
+To make this work you will need at least two thins:
+* Your GIT should follow semantic versioning. De facto means that the release will need to be tagged in GIT with an
+increasing numbering (in the form x.y.z).
+* We assume that the `.env.local` file has been set up for the Contentful scripts. This can be done by using deployment
+variables that are then copied into real files inside the CI/CD.
+* As a last advice, we suggest the 'code' release to point directly to the latest release (ie: release-1.4.6) instead
+of the master environment. The reason behind this choice is that during the rollout of a release, each node will point
+to the right Environment (old nodes to 'release-1.4.5' and new nodes to 'release-1.4.6'). This guarantee practically
+no downtime, and it avoids having to deal with potential cache issues of the 'master' alias when it points to the new
+Environment.
+
 #### Integrating with GitLab
 
-#### Integrating with GitHub
+```yaml
+.node:
+  image: node:18.15.0-bullseye #This is a Docker Image from Docker Hub
+
+contentful-pre-release:
+  extends:
+    - .node
+  script:
+    - LATEST_RELEASE=$(git describe --abbrev=0 --tags)
+    - npm install
+    - npx contentful-cli-export --from "master" --compress
+    - npx contentful-cli-release --duplicate --from "master" --to "release-$LATEST_RELEASE" --update-api-key
+    - sleep 10
+    - npx contentful-cli-migrations --to "release-$LATEST_RELEASE" --force-yes
+
+contentful-post-release:
+  extends:
+    - .node
+  script:
+    - LATEST_RELEASE=$(git describe --abbrev=0 --tags)
+    - PREVIOUS_RELEASE=$(git tag --sort=-committerdate -l|tail -n +2|head -1)
+    - npm install
+    - npx contentful-cli-release --link --alias "master" --to "release-$LATEST_RELEASE" --prune-old-releases
+    - npx contentful-cli-release --sync-schedule --from "release-$PREVIOUS_RELEASE" --to "master" --force-yes
+```
 
 ## 📅 Todo
 
