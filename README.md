@@ -30,7 +30,7 @@ integrating with CI/CD pipelines such as GitLab or GitHub, by leveraging the use
 
 ## 💡 Installation
 
-To use this helper library, you must have [NodeJS 🔗](https://nodejs.org/) and [npm 🔗](http://npmjs.org) installed.
+To use this helper library, you must have [Node.js 🔗](https://nodejs.org/) and [npm 🔗](http://npmjs.org) installed.
 
 To install it, simply run:
 
@@ -492,7 +492,7 @@ Let's assume this is the starting scenario:
 - Environment 'dev'
 ```
 
-In this case, the release process is already more structured and reliable. It diminishes downtime and it allows
+In this case, the release process is already more structured and reliable. It diminishes downtime, and it allows
 to bring the new release Environment at the same state of content, content-types and scheduled actions as the 'old'
 master, ensuring high reliability of operations. The usage of the `--link` alias function also help reduce downtime.
 
@@ -641,6 +641,7 @@ contentful-post-release:
 <table>
   <tr>
     <td align="center"><a href="https://github.com/fciacchi"><img src="https://images.weserv.nl/?url=avatars.githubusercontent.com/u/58506?v=4&h=100&w=100&fit=cover&mask=circle&maxage=7d" width="100px;" alt="Fabrizio Ciacchi" /><br /><sub><b>@fciacchi</b></sub></a><br /></td>
+    <td align="center"><a href="https://github.com/psyvic"><img src="https://images.weserv.nl/?url=avatars.githubusercontent.com/u/29251597?v=4&h=100&w=100&fit=cover&mask=circle&maxage=7d" width="100px;" alt="Victor Hugo Aizpuruo" /><br /><sub><b>@psyvic</b></sub></a><br /></td>
     <td align="center"><a href="https://github.com/aalduz"><img src="https://images.weserv.nl/?url=avatars.githubusercontent.com/u/11409770?v=4&h=100&w=100&fit=cover&mask=circle&maxage=7d" width="100px;" alt="Aldo Fernández" /><br /><sub><b>@aalduz</b></sub></a><br /></td>
   </tr>
 </table>
