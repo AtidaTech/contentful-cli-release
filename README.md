@@ -422,16 +422,86 @@ how efficient your release strategy can be.
 ### Different Release Strategies
 
 We will take into consideration the most common release strategies and scenarios, but obviously you will want (or need)
-to tailor the actions to your specific use-case. Feel free to reach out and suggest some we haven't thought about and
-we will promptly add to this list.
+to tailor the actions to your specific use-case. Feel free to reach out and suggest some we haven't thought about, and
+we will promptly add them to this list.
 
-#### Promoting 'staging' to production
+For most of the Release processes presented, it's good to always use Environment aliases, and one or two Environments
+using a release naming strategy (in our examples `release-x.y.z`). The reason behind this kind of choice is to
+be able to connect a 'code' release to a specific Environment, by using [Semantic Versioning](https://github.com/ptsteadman/semver-for-natural-language)
+for both.
+
+#### 1. Promoting 'staging' to production
+
+A common way of releasing is to promote a staging Environment to production, by duplicating staging into the new
+master. Let's see how we could use `contentful-cli-release` and the other tools to do a release, starting from these
+environments:
+
+```
+- Environment `master`
+- Environment 'master-backup'
+- Environment `staging`
+- Environment `dev`
+```
+
+What we wil simply do is to back up the involved Environments first, and then delete the oldest one to make room for
+the `staging` that is going to be promoted (by being duplicated) to the new `master`.
 
 
+```shell
+$ npx contentful-cli-export --from "staging" --compress
+$ npx contentful-cli-export --from "master" --compress
+$ npx contentful-cli-export --from "master-backup" --compress
+$ npx contentful-cli-release --delete --environment-id "master-backup"
+$ npx contentful-cli-release --duplicate --from "master" --to "master-backup"
+$ npx contentful-cli-release --delete --environment-id "master" --force-yes
+$ npx contentful-cli-release --duplicate --from "staging" --to "master"
+```
 
-#### If you only have 3 environments (Community)
+This release process is pretty straightforward and easy to implement, however it doesn't take into account few things:
+* It does not update any CDA API Key so that the 'master' key can read the newly created environments. Since the
+name of the Environments don't change, this is probably of a little concern, but in cases where we might need to
+roll-back or change naming strategy, this could interrupt the access in production.
+* Similarly, the Scheduled actions are not synced. In this kind of release process, promoting staging to master
+is already a way of publishing new content. But this is somehow a limit for the editors.
+* We haven't specified, nor mentioned, applying Contentful migrations to staging before promoting it. And this means
+that updating the Content-types is a separate process, most of the time done manually by a developer, or by a separate
+script that is not part of the release process. This can lead to inconsistencies and mistakes during the release.
+* Last, but not least. Although this process shouldn't take too much time, when the 'master' Environment is deleted
+and is being re-duplicated, this can leave the application offline for some minutes. Using Environment aliases can
+help reduce this downtime, but for a real downtime-free experience, you should probably have a look at the third, and
+most comprehensive, strategy in this list.
 
-#### Create a new Release from 'master'
+> To notice that running the `contentful-cli-export` command inside the CI/CD will generate an artifact. This
+artifact can be saved for a specified amount of time, so that a backup of the Contentful Environment is always
+present in case of a rollback operation.
+
+#### 2. Release with only have 3 environments (Community)
+
+As many developers that start with a free tier of Contentful, it is possible to use the Releases process also with
+'only' 3 Environments. In this case we need to use 2 real Environments (`dev` and `staging`) and a release Environment
+that is aliased by `master`.
+
+Let's assume this is the starting scenario:
+```
+- Environment `release-1.4.5` aliased by `master`
+- Environment `staging`
+- Environment `dev`
+```
+
+This release is more
+
+```shell
+$ npx contentful-cli-export --from "staging" --compress
+$ npx contentful-cli-export --from "master" --compress
+$ npx contentful-cli-release --delete --environment-id "staging" --force-yes
+$ npx contentful-cli-release --duplicate --from "master" --to "release-1.4.6" --update-api-key
+$ npx contentful-cli-release --sync-schedule --from "master" --to "release-1.4.6"
+$ npx contentful-cli-migrations --to "release-1.4.6" --force-yes
+$ npx contentful-cli-release --link --alias "master" --to "release-1.4.6"
+$ npx contentful-cli-release --duplicate --from "master" --to "staging"
+```
+
+#### 3. Create a new Release from existing 'master'
 
 ### Integrating with your CI/CD
 
