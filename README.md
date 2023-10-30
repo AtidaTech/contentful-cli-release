@@ -504,6 +504,7 @@ $ npx contentful-cli-release --duplicate --from "master" --to "release-1.4.6" --
 $ npx contentful-cli-release --sync-schedule --from "master" --to "release-1.4.6"
 $ npx contentful-cli-migrations --to "release-1.4.6" --force-yes
 $ npx contentful-cli-release --link --alias "master" --to "release-1.4.6"
+$ npx contentful-cli-release --delete --environment-id "release-1.4.5"
 $ npx contentful-cli-release --duplicate --from "master" --to "staging"
 ```
 
@@ -521,7 +522,8 @@ accessible with the 'master' CDA API Key.
 collection of scripts. The `--force-yes` option will automatically apply all the missing migrations to the new
 Environment.
 7. We proceed to switch the alias of 'master' from the old release (1.4.5) to the new one (1.4.6) guaranteeing minimal
-downtime.
+downtime. There is an additional command line option `--get-master-release` to obtain the environment linked by master,
+so that it can be saved in a shell ENV to be later used for deletion.
 8. At the end we will duplicate the new 'master' as the new 'staging', so that development can continue on a 'staging'
 Environment that is an exact copy of production. We don't use the `--update-api-key` option, because it should exist
 a 'staging' CDA API Key, separated from the 'master' one.
@@ -627,6 +629,67 @@ contentful-post-release:
     - npm install
     - npx contentful-cli-release --link --alias "master" --to "release-$LATEST_RELEASE" --prune-old-releases
     - npx contentful-cli-release --sync-schedule --from "release-$PREVIOUS_RELEASE" --to "master" --force-yes
+```
+
+#### Building with Next.js
+
+Note:
+- You will need to change the release regular expression to `release-[0-9]*` and use Linux timestamp as unique
+identifier for the release number.
+- You will need also to use the command line option `--get-master-release` to get the current Environment to which
+master is linking, so that it can be deleted later if you don't have enough Contentful Environments.
+- Remember to install the NPM Package `cross-env`: https://www.npmjs.com/package/cross-env
+
+Add to your package.json:
+```json
+ "scripts": {
+    "build": "next build && npm run contentful-release",
+    "contentful-release": "cross-env DATE=\"$(date +%s)\" OLD_RELEASE=\"$(npx contentful-cli-release --get-master-release)\" npm run contentful-deploy-commands",
+    "contentful-deploy-commands": "cross-env-shell \"npm run contentful-delete-staging && npm run contentful-duplicate-master && npm run contentful-sync-schedule && npm run contentful-run-migrations && npm run contentful-link-alias && npm run contentful-delete-old-release && npm run contentful-duplicate-staging\"",
+    "contentful-delete-staging": "npx contentful-cli-release --delete --environment-id staging --force-yes",
+    "contentful-duplicate-master": "cross-env-shell \"npx contentful-cli-release --duplicate --from master --to release-$DATE --update-api-key\"",
+    "contentful-sync-schedule": "cross-env-shell \"npx contentful-cli-release --sync-schedule --from master --to release-$DATE\"",
+    "contentful-run-migrations": "cross-env-shell \"npx contentful-cli-migrations --to release-$DATE --force-yes\"",
+    "contentful-link-alias": "cross-env-shell \"npx contentful-cli-release --link --alias master --to release-$DATE\"",
+    "contentful-delete-old-release": "cross-env-shell \"npx contentful-cli-release --delete --environment-id $OLD_RELEASE\"",
+    "contentful-duplicate-staging": "npx contentful-cli-release --duplicate --from master --to staging",
+  },
+```
+
+#### GitHub Workflow
+
+This is still experimental, but your `.github/workflows/contentful.yml` file will look something like:
+
+```yaml
+name: Node.js CI
+
+on:
+  push:
+    branches: ['main']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.15.0]
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: '1'
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      - run: npm install
+      - run: npx contentful-cli-export --from "master" --compress
+      - run: LATEST_RELEASE=$(git describe --abbrev=0 --tags) && npx contentful-cli-release --duplicate --from "master" --to "release-$LATEST_RELEASE" --update-api-key
+      - run: LATEST_RELEASE=$(git describe --abbrev=0 --tags) && npx contentful-cli-migrations --to "release-$LATEST_RELEASE" --force-yes
+      - run: LATEST_RELEASE=$(git describe --abbrev=0 --tags) && npx contentful-cli-release --link --alias "master" --to "release-$LATEST_RELEASE" --prune-old-releases
+      - run: PREVIOUS_RELEASE=$(git tag --sort=-committerdate -l|tail -n +2|head -1) && npx contentful-cli-release --sync-schedule --from "release-$PREVIOUS_RELEASE" --to "master" --force-yes
 ```
 
 ## 📅 Todo

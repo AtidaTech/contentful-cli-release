@@ -28,6 +28,12 @@ const RELEASE_ENVIRONMENT_REGEX = 'release-[0-9]+[\\.]*[0-9]*[\\.]*[0-9]*'
     let result = false
 
     switch (parsedArguments.chosenAction) {
+      case 0:
+        const oldEnvironment =
+          await spaceSingleton.getEnvironmentAlias('master')
+        console.log(oldEnvironment?.environment?.sys?.id)
+        result = true
+        break
       case 1:
         await duplicateEnvironment(
           contentfulManagement,
@@ -194,6 +200,24 @@ async function parseArguments(envValues) {
       releaseRegularExpression = envValues?.CMS_RELEASE_ENVIRONMENT_REGEX ??
         RELEASE_ENVIRONMENT_REGEX
   } = parsedArgs
+
+  if (parsedArgs.hasOwnProperty('get-master-release')) {
+    return {
+      managementToken,
+      spaceId,
+      chosenAction: 0,
+      forceYes,
+      updateApiKey,
+      pruneOldReleases,
+      environmentFrom: '',
+      environmentTo: '',
+      syncPath,
+      configPath,
+      maxScheduledActions,
+      protectedEnvironments,
+      releaseRegularExpression
+    }
+  }
 
   const argNames = [
     'duplicate',
