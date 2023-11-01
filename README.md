@@ -52,7 +52,7 @@ bun add contentful-cli-release
 
 ### Requirements
 
-* `node` >= 18
+* `node` >= 18.0.0
 * `npm` >= 9.5.0
 * `contentful-management` >= 7.50.0
 * [contentful-lib-helpers](https://www.npmjs.com/package/contentful-lib-helpers) >= 0.3.0
@@ -115,7 +115,7 @@ Arguments:
 - `--from`: The name of the source environment to duplicate from. Ie: 'master'.
 - `--to`: The name of the destination environment to duplicate to. Ie: 'release-1.7.4' or 'staging'.
 - `--update-api-key`: It will enable, for the duplicated environment, the CDA API Key that has the same name of the
-  source environment (so, for environment 'master', the CDA API Key should be also called 'master').
+source environment (so, for environment 'master', the CDA API Key should be also called 'master').
 
 > See the section [🎹 Usage](#-usage) for details on the command line options.
 
@@ -436,6 +436,8 @@ for both.
 
 #### 1. Promoting 'staging' to production
 
+![Promote 'staging' strategy](./images/release-strategy-1.gif)
+
 A common way of releasing is to promote a staging Environment to production, by duplicating staging into the new
 master. Let's see how we could use `contentful-cli-release` and the other tools to do a release, starting from these
 environments:
@@ -480,6 +482,8 @@ artifact can be saved for a specified amount of time, so that a backup of the Co
 present in case of a rollback operation.
 
 #### 2. Release with only have 3 environments (Community)
+
+![Release with 3 environments](./images/release-strategy-2.gif)
 
 As many developers that start with a free tier of Contentful, it is possible to use the Releases process also with
 'only' 3 Environments. In this case we need to use 2 real Environments (`dev` and `staging`) and a release Environment
@@ -529,6 +533,8 @@ Environment that is an exact copy of production. We don't use the `--update-api-
 a 'staging' CDA API Key, separated from the 'master' one.
 
 #### 3. Create a new Release from existing 'master'
+
+![Create a new Release](./images/release-strategy-3.gif)
 
 This is somehow the most complex, but also the most reliable way of performing a release.
 
@@ -586,6 +592,9 @@ Environments look like:
 - Environment 'staging'
 - Environment 'dev'
 ```
+
+> You can also have a look at the official Contentful article
+[Deploying changes with environment aliases](https://www.contentful.com/developers/docs/tutorials/general/deploying-changes-with-environment-aliases/)
 
 ### Integrating with your CI/CD
 
