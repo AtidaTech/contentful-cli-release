@@ -55,7 +55,7 @@ bun add contentful-cli-release
 * `node` >= 18.0.0
 * `npm` >= 9.5.0
 * `contentful-management` >= 7.50.0
-* [contentful-lib-helpers](https://www.npmjs.com/package/contentful-lib-helpers) >= 0.3.0
+* [contentful-lib-helpers](https://www.npmjs.com/package/contentful-lib-helpers) >= 0.3.3
 
 
 ### Set-up
