@@ -1,6 +1,6 @@
 {
   "name": "contentful-cli-release",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "description": "Contentful CLI Release tool",
   "homepage": "https://github.com/AtidaTech/contentful-cli-release",
@@ -35,10 +35,10 @@
     "lint-fix": "node_modules/eslint/bin/eslint.js --resolve-plugins-relative-to ./ --ext js,mjs,cjs,jsx,ts,tsx ./contentful-cli-release.js --fix"
   },
   "dependencies": {
-    "contentful-lib-helpers": ">=1.0.0",
-    "contentful-management": ">=12.0.0 <13.0.0",
+    "contentful-lib-helpers": ">=1.1.0",
+    "contentful-management": ">=12.18.2 <13.0.0",
     "dotenv": "^16.0.3",
-    "follow-redirects": ">=1.15.6",
+    "follow-redirects": ">=1.16.0",
     "dayjs": "^1.11.10",
     "minimist": "^1.2.8"
   },
