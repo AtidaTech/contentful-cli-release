@@ -52,7 +52,7 @@ bun add contentful-cli-release
 
 ### Requirements
 
-* `node` >= 22
+* `node` >= 24.22.1; `npm` >= 12.2.1
 * `npm` >= 10.5.0
 * `contentful-management` >= 12.x.x
 * [contentful-lib-helpers](https://www.npmjs.com/package/contentful-lib-helpers) >= 1.0.0
@@ -616,14 +616,15 @@ Environment.
 
 ```yaml
 .node:
-  image: node:22-bullseye #This is a Docker Image from Docker Hub
+  image: node:24-bookworm #This is a Docker Image from Docker Hub
 
 contentful-pre-release:
   extends:
     - .node
   script:
     - LATEST_RELEASE=$(git describe --abbrev=0 --tags)
-    - npm install
+    - npm install --global npm@12.2.1
+    - npm ci
     - npx contentful-cli-export --from "master" --compress
     - npx contentful-cli-release --duplicate --from "master" --to "release-$LATEST_RELEASE" --update-api-key
     - sleep 10
@@ -635,7 +636,8 @@ contentful-post-release:
   script:
     - LATEST_RELEASE=$(git describe --abbrev=0 --tags)
     - PREVIOUS_RELEASE=$(git tag --sort=-committerdate -l|tail -n +2|head -1)
-    - npm install
+    - npm install --global npm@12.2.1
+    - npm ci
     - npx contentful-cli-release --link --alias "master" --to "release-$LATEST_RELEASE" --prune-old-releases
     - npx contentful-cli-release --sync-schedule --from "release-$PREVIOUS_RELEASE" --to "master" --force-yes
 ```

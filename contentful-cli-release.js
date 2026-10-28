@@ -28,12 +28,13 @@ const RELEASE_ENVIRONMENT_REGEX = 'release-[0-9]+[\\.]*[0-9]*[\\.]*[0-9]*'
     let result = false
 
     switch (parsedArguments.chosenAction) {
-      case 0:
+      case 0: {
         const oldEnvironment =
           await spaceSingleton.getEnvironmentAlias('master')
         console.log(oldEnvironment?.environment?.sys?.id)
         result = true
         break
+      }
       case 1:
         await duplicateEnvironment(
           contentfulManagement,
@@ -73,7 +74,7 @@ const RELEASE_ENVIRONMENT_REGEX = 'release-[0-9]+[\\.]*[0-9]*[\\.]*[0-9]*'
         )
         result = true
         break
-      case 5:
+      case 5: {
         let protectedEnvironments =
           parsedArguments?.protectedEnvironments.split(',') ?? []
 
@@ -88,6 +89,7 @@ const RELEASE_ENVIRONMENT_REGEX = 'release-[0-9]+[\\.]*[0-9]*[\\.]*[0-9]*'
           protectedEnvironments
         )
         break
+      }
     }
 
     if (!result) {
@@ -123,7 +125,7 @@ async function getEnvValues(localWorkingDir, scriptDirectory) {
   const { config } = await import('dotenv')
 
   const envDataFromPath = path =>
-    existsSync(path) ? config({ path }).parsed : {}
+    existsSync(path) ? config({ path, quiet: true }).parsed : {}
 
   const paths = [
     `${scriptDirectory}/../../.env`,
@@ -204,7 +206,7 @@ async function parseArguments(envValues) {
         RELEASE_ENVIRONMENT_REGEX
   } = parsedArgs
 
-  if (parsedArgs.hasOwnProperty('get-master-release')) {
+  if (Object.hasOwn(parsedArgs, 'get-master-release')) {
     return {
       managementToken,
       spaceId,
@@ -230,7 +232,7 @@ async function parseArguments(envValues) {
     'delete'
   ]
   const chosenAction =
-    argNames.findIndex(arg => parsedArgs.hasOwnProperty(arg)) + 1 || 0
+    argNames.findIndex(arg => Object.hasOwn(parsedArgs, arg)) + 1 || 0
   const cleanedEnvs = await getEnvsFromArgs(parsedArgs, chosenAction)
   let environmentFrom = cleanedEnvs?.environmentFrom
   let environmentTo = cleanedEnvs?.environmentTo
@@ -686,6 +688,7 @@ async function formatScheduledAction(scheduledAction) {
 function logScheduledItemInfo(scheduledActions, destEnvironment) {
   console.log("##/INFO: Destination Environment: '" + destEnvironment + "'")
   console.log(
-    '##/INFO: Total Scheduled Actions: ' + scheduledActions?.items?.length ?? 0
+    '##/INFO: Total Scheduled Actions: ' +
+      (scheduledActions?.items?.length ?? 0)
   )
 }
